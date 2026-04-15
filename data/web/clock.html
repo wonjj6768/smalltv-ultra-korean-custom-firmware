@@ -1,0 +1,171 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Dashboard</title>
+    <link rel="stylesheet" href="./css/pico.min.css" />
+    <link rel="stylesheet" href="./css/style.css" />
+    <script src="./js/alpinejs.min.js" defer></script>
+    <script src="./js/utils.js"></script>
+    <script src="./js/themeSwitcher.js"></script>
+    <script src="./js/clockHandler.js"></script>
+    <script src="./js/main.js"></script>
+  </head>
+  <body>
+    <main class="container">
+      <header id="header-placeholder"></header>
+
+      <a href="./index.html" class="wifi-back-link">← Back to Home</a>
+
+      <section x-data="clockHandler()" x-init="init()">
+        <h2>Dashboard</h2>
+
+        <p>Configure the idle dashboard shown on the device.</p>
+
+        <label>
+          <input type="checkbox" x-model="enabled" x-bind:disabled="loading" />
+          Enable clock screen
+        </label>
+
+        <label>
+          <input
+            type="checkbox"
+            x-model="use24h"
+            x-bind:disabled="loading || !enabled"
+          />
+          Use 24-hour time
+        </label>
+
+        <hr />
+
+        <label>
+          <input
+            type="checkbox"
+            x-model="weatherEnabled"
+            x-bind:disabled="loading"
+          />
+          Show weather on the dashboard
+        </label>
+
+        <label for="weather-region">Region</label>
+        <div
+          style="display: flex; gap: 0.5em; flex-wrap: wrap; align-items: center"
+        >
+          <input
+            id="weather-region"
+            type="text"
+            x-model="locationName"
+            x-bind:disabled="loading || !weatherEnabled"
+            placeholder="서울특별시 종로구 청운동"
+            style="flex: 1 1 20rem"
+          />
+          <button
+            type="button"
+            class="secondary"
+            @click="searchRegions()"
+            x-bind:disabled="loading || !weatherEnabled || !locationName.trim()"
+          >
+            Search Region
+          </button>
+        </div>
+        <small x-text="regionStatus"></small>
+        <template x-if="regionResults.length">
+          <label for="weather-region-results" style="margin-top: 0.5em">
+            Search Results
+          </label>
+        </template>
+        <template x-if="regionResults.length">
+          <select
+            id="weather-region-results"
+            x-model="selectedRegionResult"
+            x-bind:disabled="loading || !weatherEnabled"
+          >
+            <template x-for="result in regionResults" :key="result.label">
+              <option :value="result.label" x-text="result.label"></option>
+            </template>
+          </select>
+        </template>
+        <template x-if="regionResults.length">
+          <button
+            type="button"
+            class="secondary"
+            @click="applySelectedRegion()"
+            x-bind:disabled="loading || !weatherEnabled || !selectedRegionResult"
+            style="margin-top: 0.5em"
+          >
+            Apply Selected Result
+          </button>
+        </template>
+
+        <label for="weather-latitude">Latitude</label>
+        <input
+          id="weather-latitude"
+          type="number"
+          step="0.000001"
+          x-model="latitude"
+          x-bind:disabled="loading || !weatherEnabled"
+          placeholder="37.566"
+        />
+
+        <label for="weather-longitude">Longitude</label>
+        <input
+          id="weather-longitude"
+          type="number"
+          step="0.000001"
+          x-model="longitude"
+          x-bind:disabled="loading || !weatherEnabled"
+          placeholder="126.9784"
+        />
+
+        <label for="weather-timezone">Weather Timezone</label>
+        <input
+          id="weather-timezone"
+          type="text"
+          x-model="timezone"
+          x-bind:disabled="loading || !weatherEnabled"
+          placeholder="Asia/Seoul"
+        />
+        <small>Examples: <code>Asia/Seoul</code>, <code>Asia/Tokyo</code>, <code>UTC</code>, or <code>auto</code>.</small>
+
+        <div
+          style="margin-top: 0.5em; display: flex; gap: 0.5em; flex-wrap: wrap"
+        >
+          <button
+            type="button"
+            class="primary"
+            @click="saveSettings()"
+            x-bind:disabled="loading"
+          >
+            Save Dashboard Settings
+          </button>
+          <button
+            type="button"
+            @click="fetchSettings()"
+            x-bind:disabled="loading"
+          >
+            Refresh
+          </button>
+        </div>
+
+        <p x-text="statusMsg"></p>
+
+        <article>
+          <header>Cached Weather</header>
+          <p><strong>Status:</strong> <span x-text="weatherStatus"></span></p>
+          <p><strong>Timezone:</strong> <span x-text="weatherTimezone"></span></p>
+          <p><strong>Current:</strong> <span x-text="currentSummary"></span></p>
+          <template x-if="forecastSummary.length">
+            <ul>
+              <template x-for="item in forecastSummary" :key="item">
+                <li x-text="item"></li>
+              </template>
+            </ul>
+          </template>
+        </article>
+      </section>
+
+      <footer id="footer-placeholder"></footer>
+    </main>
+  </body>
+</html>
