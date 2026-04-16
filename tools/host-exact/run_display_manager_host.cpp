@@ -8,9 +8,42 @@
 #include "config/ConfigManager.h"
 #include "display/DisplayManager.h"
 #include "weather/WeatherClient.h"
+#include "wireless/WiFiManager.h"
 
 ConfigManager configManager;
 WeatherClient* weatherClient = nullptr;
+WiFiManager* wifiManager = nullptr;
+bool g_legacyUpdateModeEnabled = false;
+const char* AP_SSID = "GeekMagic";
+
+WiFiManager::WiFiManager(const char* staSsid, const char* staPass, const char* apSsid, const char* apPass)
+    : _staSsid(staSsid), _staPass(staPass), _apSsid(apSsid), _apPass(apPass) {}
+
+void WiFiManager::begin() {}
+
+auto WiFiManager::startStationMode() -> bool { return true; }
+
+auto WiFiManager::startAccessPointMode() -> bool {
+    _apMode = true;
+    return true;
+}
+
+auto WiFiManager::isApMode() const -> bool { return _apMode; }
+
+auto WiFiManager::getIP() const -> IPAddress {
+    return _apMode ? IPAddress(192, 168, 4, 1) : IPAddress(192, 168, 0, 42);
+}
+
+void WiFiManager::scanNetworks(JsonArray&) {}
+
+auto WiFiManager::connectToNetwork(const char*, const char*, uint32_t) -> bool {
+    _apMode = false;
+    return true;
+}
+
+auto WiFiManager::isConnected() -> bool { return true; }
+
+auto WiFiManager::getConnectedSSID() -> String { return String("Host WiFi"); }
 
 static auto applyWeatherPreset(WeatherClient::Snapshot& snapshot, const std::string& preset, std::time_t now) -> void {
     snapshot = {};
@@ -167,6 +200,10 @@ int main(int argc, char** argv) {
     configManager.setLCDRotation(0);
     configManager.setWeatherTimezone("Asia/Seoul");
     configManager.setTimezoneRegion("Asia/Seoul");
+    configManager.weather_location_name = "Seoul";
+
+    WiFiManager hostWifi("", "", AP_SSID, "");
+    wifiManager = &hostWifi;
 
     WeatherClient weather;
     weatherClient = &weather;

@@ -47,6 +47,7 @@ include/project_version.h
 config.json
 output/
 tmp-font/
+release/
 tools/host-exact/*.exe
 tools/host-exact/*.tmp*
 tools/fontgen/ui-text-font-preview.png
