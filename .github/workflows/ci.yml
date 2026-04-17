@@ -1,0 +1,82 @@
+name: CI
+
+on:
+  push:
+    branches: ["*"]
+    tags: ["*"]
+  pull_request:
+    branches: ["*"]
+
+permissions:
+  contents: read
+  issues: read
+  pull-requests: read
+  packages: read
+
+jobs:
+  build:
+    name: Build with PlatformIO
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      issues: read
+      pull-requests: read
+      packages: read
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+        with:
+          fetch-depth: 0
+          fetch-tags: true
+
+      - name: Set up Python
+        uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6
+        with:
+          python-version: "3.x"
+
+      - name: Install PlatformIO
+        run: |
+          pip install 'click<8.1.0'
+          pip install platformio
+
+      - name: Build firmware
+        run: |
+          pio run
+          mkdir -p artifacts/release
+          cp .pio/build/esp12e/firmware.bin artifacts/release/firmware.bin
+
+      - name: Build filesystem for SmallTV-Ultra
+        run: |
+          cp data/config.example data/config.json
+          pio run --target buildfs
+          mkdir -p artifacts/release
+          cp .pio/build/esp12e/littlefs.bin artifacts/release/littlefs.bin
+
+      - name: Build OTA bridge firmware
+        run: |
+          pio run -d tools/bridge-firmware
+          mkdir -p artifacts/release
+          cp tools/bridge-firmware/.pio/build/esp12e-bridge/firmware.bin artifacts/release/bridge-firmware.bin
+
+      - name: Prepare release artifacts
+        run: |
+          test -f artifacts/release/firmware.bin
+          test -f artifacts/release/littlefs.bin
+          test -f artifacts/release/bridge-firmware.bin
+          (
+            cd artifacts/release
+            sha256sum firmware.bin littlefs.bin bridge-firmware.bin > SHA256SUMS.txt
+          )
+
+      - name: Upload release artifacts
+        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7
+        with:
+          name: release-artifacts
+          path: |
+            artifacts/release/firmware.bin
+            artifacts/release/littlefs.bin
+            artifacts/release/bridge-firmware.bin
+            artifacts/release/SHA256SUMS.txt
+          include-hidden-files: true
+

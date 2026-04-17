@@ -1,0 +1,14 @@
+{
+  "wifi_ssid": "",
+  "wifi_password": "",
+  "api_token": "your_secure_token_here",
+  "lcd_rotation": 0,
+  "clock_enabled": true,
+  "clock_use_24h": true,
+  "weather_enabled": true,
+  "weather_latitude": 37.566,
+  "weather_longitude": 126.9784,
+  "weather_timezone": "Asia/Seoul",
+  "timezone_region": "Asia/Seoul",
+  "timezone_offset_minutes": 540
+}
