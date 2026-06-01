@@ -85,6 +85,12 @@ The public firmware does not include a private KMA API key.
 
 공개 펌웨어에는 개인 기상청 API 인증키가 포함되어 있지 않습니다.
 
+## Documentation / 문서
+
+- [Flash Guide](docs/flash-guide.md) / 플래싱 및 복구 절차
+- [Development Notes](docs/development.md) / 개발, 빌드, 호스트 미리보기
+- [Release Checklist](docs/release-checklist.md) / 릴리즈 체크리스트
+
 ## Build / 빌드
 
 Requires PlatformIO.
