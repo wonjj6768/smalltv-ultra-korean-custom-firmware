@@ -11,7 +11,7 @@
   "weather_kma_grid_x": 60,
   "weather_kma_grid_y": 127,
   "weather_timezone": "Asia/Seoul",
-  "weather_location_name": "서울특별시",
+  "weather_location_name": "서울시",
   "weather_kma_api_key": "",
   "timezone_region": "Asia/Seoul",
   "timezone_offset_minutes": 540
