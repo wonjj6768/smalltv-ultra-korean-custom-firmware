@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 /*
- * GeekMagic Open Firmware
+ * SmallTV-Ultra Korean Custom Firmware
  * Copyright (C) 2026 Times-Z
  *
  * This program is free software: you can redistribute it and/or modify
@@ -41,6 +41,7 @@ struct ContentTypeMapping {
 
 constexpr const char* DEFAULT_CONTENT_TYPE = "application/octet-stream";
 constexpr const char* HTML_CONTENT_TYPE = "text/html";
+constexpr const char* ACCEPT_ENCODING_HEADER = "Accept-Encoding";
 
 constexpr std::array<ContentTypeMapping, 13> CONTENT_TYPE_MAPPINGS = {{
     {".html", HTML_CONTENT_TYPE},
@@ -70,6 +71,36 @@ auto hasSuffix(const char* value, const char* suffix) -> bool {
     }
 
     return strcmp(value + valueLen - suffixLen, suffix) == 0;
+}
+
+auto staticCacheSecondsForPath(const char* path) -> int {
+    if (path == nullptr) {
+        return 0;
+    }
+
+    if (hasSuffix(path, ".html") || hasSuffix(path, ".htm")) {
+        return 0;
+    }
+
+    return 86400;
+}
+
+auto supportsGzipForPath(const char* path) -> bool {
+    return hasSuffix(path, ".css") || hasSuffix(path, ".js") || hasSuffix(path, ".json") ||
+           hasSuffix(path, ".svg") || hasSuffix(path, ".txt");
+}
+
+auto requestAcceptsGzip(ESP8266WebServer& server) -> bool {
+    const String& encoding = server.header(ACCEPT_ENCODING_HEADER);
+    return encoding.indexOf("gzip") >= 0;
+}
+
+auto makeGzipPath(const char* path, char* out, size_t outSize) -> bool {
+    if (path == nullptr || out == nullptr || outSize == 0) {
+        return false;
+    }
+
+    return snprintf(out, outSize, "%s.gz", path) > 0;
 }
 
 }  // namespace
@@ -102,6 +133,7 @@ auto Webserver::beginFS(bool formatIfFailed) -> bool {
  */
 void Webserver::begin() {
     Logger::info("Starting webserver", "Webserver");
+    _server.collectHeaders(ACCEPT_ENCODING_HEADER);
     _server.begin();
 }
 // NOLINTEND(readability-convert-member-functions-to-static)
@@ -159,10 +191,15 @@ void Webserver::serveStaticC(const char* uriC, const char* pathC, const char* co
             return;
         }
 
-        File f = LittleFS.open(chosenPath, "r");
+        char gzipPath[PATH_BUF_SIZE] = {0};
+        const bool serveGzip = cacheSeconds > 0 && supportsGzipForPath(chosenPath) && requestAcceptsGzip(_server) &&
+                               makeGzipPath(chosenPath, gzipPath, sizeof(gzipPath)) && LittleFS.exists(gzipPath);
+        const char* openPath = serveGzip ? gzipPath : chosenPath;
+
+        File f = LittleFS.open(openPath, "r");
         if (!f) {
             char msg[320];
-            snprintf(msg, sizeof(msg), "Failed to open file: %s", chosenPath);
+            snprintf(msg, sizeof(msg), "Failed to open file: %s", openPath);
             Logger::error(msg, "Webserver");
             _server.send(HTTP_CODE_INTERNAL_ERROR, "text/plain", "Open failed");
 
@@ -186,6 +223,9 @@ void Webserver::serveStaticC(const char* uriC, const char* pathC, const char* co
             }
         } else {
             _server.sendHeader("Cache-Control", "no-cache, no-store, must-revalidate");
+        }
+        if (serveGzip) {
+            _server.sendHeader("Vary", "Accept-Encoding");
         }
         _server.setContentLength(size);
         _server.streamFile(f, contentTypeResolved);
@@ -224,7 +264,7 @@ void Webserver::registerStaticDir(  // NOLINT(readability-convert-member-functio
         return;
     }
 
-    _server.serveStatic(prefix.c_str(), LittleFS, dirPath.c_str(), "max-age=86400");
+    _server.serveStatic(prefix.c_str(), LittleFS, dirPath.c_str(), "no-cache, no-store, must-revalidate");
 
     String info = String("Registered static dir: ") + prefix + " -> " + dirPath;
     if (!contentType.isEmpty()) {
@@ -284,20 +324,34 @@ void Webserver::registerGenericStaticFallback(  // NOLINT(readability-convert-me
             return;
         }
 
-        if (LittleFS.exists(fsPath)) {
-            strncpy(chosenPath, fsPath, sizeof(chosenPath) - 1);
-        } else {
+        if (!LittleFS.exists(fsPath)) {
             _server.send(HTTP_CODE_NOT_FOUND, "text/plain", "Not found");
             return;
         }
+        strncpy(chosenPath, fsPath, sizeof(chosenPath) - 1);
 
-        File f = LittleFS.open(chosenPath, "r");
+        const int cacheSeconds = staticCacheSecondsForPath(fsPath);
+        char gzipPath[PATH_BUF_SIZE] = {0};
+        const bool serveGzip = cacheSeconds > 0 && supportsGzipForPath(fsPath) && requestAcceptsGzip(_server) &&
+                               makeGzipPath(fsPath, gzipPath, sizeof(gzipPath)) && LittleFS.exists(gzipPath);
+        const char* openPath = serveGzip ? gzipPath : chosenPath;
+
+        File f = LittleFS.open(openPath, "r");
         if (!f) {
             _server.send(HTTP_CODE_INTERNAL_ERROR, "text/plain", "Open failed");
             return;
         }
 
-        _server.sendHeader("Cache-Control", "public, max-age=86400");
+        if (cacheSeconds > 0) {
+            _server.sendHeader("Cache-Control", "public, max-age=86400");
+        } else {
+            _server.sendHeader("Cache-Control", "no-cache, no-store, must-revalidate");
+            _server.sendHeader("Pragma", "no-cache");
+            _server.sendHeader("Expires", "0");
+        }
+        if (serveGzip) {
+            _server.sendHeader("Vary", "Accept-Encoding");
+        }
         _server.setContentLength(f.size());
         _server.streamFile(f, guessContentTypeC(fsPath));
         f.close();

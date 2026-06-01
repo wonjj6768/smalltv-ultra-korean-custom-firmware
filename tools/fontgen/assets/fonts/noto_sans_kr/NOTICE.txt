@@ -1,0 +1,19 @@
+Noto Sans KR
+============
+
+`tools/fontgen/generate_ui_text_font.py` is intended to use Noto Sans KR when
+regenerating `src/display/UiTextFont.cpp`.
+
+License
+-------
+
+Noto Sans KR is distributed under the SIL Open Font License, Version 1.1.
+
+The full OFL 1.1 license text is available in this repository at:
+
+- `tools/fontgen/assets/fonts/rajdhani/OFL.txt`
+
+Official project:
+
+- https://fonts.google.com/noto/specimen/Noto+Sans+KR
+- https://github.com/notofonts

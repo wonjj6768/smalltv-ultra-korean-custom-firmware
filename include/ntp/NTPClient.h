@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 /*
- * GeekMagic Open Firmware
+ * SmallTV-Ultra Korean Custom Firmware
  * Copyright (C) 2026 Times-Z
  *
  * This program is free software: you can redistribute it and/or modify
@@ -41,7 +41,11 @@ class NTPClient {
     bool _lastOk = false;
     String _lastStatus = "never synced";
     unsigned long _nextSyncAttemptMs = 0;
-    void performSync();
+    unsigned long _syncStartedMs = 0;
+    bool _syncInProgress = false;
+    void startSync();
+    void pollSync();
+    void finishSync(bool ok, time_t now = 0);
 };
 
 #endif  // NTP_CLIENT_H

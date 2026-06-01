@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 /*
- * GeekMagic Open Firmware
+ * SmallTV-Ultra Korean Custom Firmware
  * Copyright (C) 2026 Times-Z
  *
  * This program is free software: you can redistribute it and/or modify
@@ -59,7 +59,7 @@ class Webserver {
     void on(const String& uri, HTTPMethod method, std::function<void()> handler);
     void on(const String& uri, std::function<void()> handler);
     void serveStaticC(const char* uriC, const char* pathC, const char* contentTypeC = nullptr,
-                      int cacheSeconds = 86400);
+                      int cacheSeconds = 0);
     void registerStaticDir(const String& fsDir, const String& uriPrefix, const String& contentType);
     void registerGenericStaticFallback(const String& fsBasePath = "/web", bool excludeRoot = true);
     void onNotFound(std::function<void()> handler);

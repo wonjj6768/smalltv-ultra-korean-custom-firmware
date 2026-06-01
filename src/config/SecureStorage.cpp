@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 /*
- * GeekMagic Open Firmware
+ * SmallTV-Ultra Korean Custom Firmware
  * Copyright (C) 2026 Times-Z
  *
  * This program is free software: you can redistribute it and/or modify
@@ -75,15 +75,8 @@ auto SecureStorage::begin() -> bool {
     EEPROM.begin(static_cast<int>(_eepromSize));
 
     if (!loadToMemory()) {
-        Logger::warn("No existing NVS data found, initializing new storage", "SecureStorage");
+        Logger::warn("No existing NVS data found, using empty in-memory storage", "SecureStorage");
         _doc.clear();
-
-        if (!flushToEEPROM()) {
-            Logger::error("Failed to initialize NVS in EEPROM", "SecureStorage");
-            _ready = false;
-
-            return false;
-        }
     }
 
     _ready = true;
@@ -244,6 +237,15 @@ auto SecureStorage::remove(const char* key) -> bool {
 
     _doc.remove(key);
 
+    return flushToEEPROM();
+}
+
+auto SecureStorage::clear() -> bool {
+    if (!_ready) {
+        _ready = true;
+    }
+
+    _doc.clear();
     return flushToEEPROM();
 }
 

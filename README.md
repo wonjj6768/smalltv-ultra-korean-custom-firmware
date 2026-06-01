@@ -1,6 +1,8 @@
-# GeekMagic Open Firmware
+# SmallTV-Ultra Korean Custom Firmware
 
 Korean-focused firmware for the ESP8266-based **SmallTV-Ultra**.
+
+Repository: [wonjj6768/smalltv-ultra-korean-custom-firmware](https://github.com/wonjj6768/smalltv-ultra-korean-custom-firmware).
 
 This fork is based on [Times-Z/GeekMagic-Open-Firmware](https://github.com/Times-Z/GeekMagic-Open-Firmware).
 
@@ -17,7 +19,7 @@ This fork is based on [Times-Z/GeekMagic-Open-Firmware](https://github.com/Times
 
 ## Install
 
-Download these files from GitHub Releases:
+Download these files from [GitHub Releases](https://github.com/wonjj6768/smalltv-ultra-korean-custom-firmware/releases):
 
 - `bridge-firmware.bin`
 - `firmware.bin`
@@ -57,9 +59,9 @@ pio run -d tools/bridge-firmware
 
 - Firmware source code in this repo is released under `GPL-3.0-or-later`.
 - `tools/fontgen/assets/fonts/rajdhani/Rajdhani-Bold.ttf` is bundled under the `SIL Open Font License 1.1`. See `tools/fontgen/assets/fonts/rajdhani/OFL.txt`.
-- `src/display/UiTextFont.cpp` is a generated source file checked into this repo. GitHub Actions builds the committed file as-is and does not regenerate it. If you regenerate it locally with `tools/fontgen/generate_ui_text_font.py`, use `Noto Sans KR`.
+- `src/display/UiTextFont.cpp` is a generated source file checked into this repo. GitHub Actions builds the committed file as-is and does not regenerate it. If you regenerate it locally with `tools/fontgen/generate_ui_text_font.py`, use `Noto Sans KR`. See `tools/fontgen/assets/fonts/noto_sans_kr/NOTICE.txt`.
 - `data/web/css/pico.min.css` is `MIT` licensed.
-- `data/weather-icons/*.bmp` are generated from [`basmilius/weather-icons`](https://github.com/basmilius/weather-icons) assets. The source icon set is `MIT` licensed.
+- `data/weather-icons/*.bmp` are generated from [`basmilius/weather-icons`](https://github.com/basmilius/weather-icons) assets. See `data/weather-icons/LICENSE.txt`.
 
 ## License and Upstream
 

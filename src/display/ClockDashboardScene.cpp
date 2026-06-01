@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 /*
- * GeekMagic Open Firmware
+ * SmallTV-Ultra Korean Custom Firmware
  * Copyright (C) 2026 Times-Z
  */
 
@@ -95,24 +95,16 @@ static auto formatForecastHourLabel(std::time_t timestamp) -> std::string {
     return hour;
 }
 
-static auto isClearForecastWeather(int weatherCode) -> bool {
-    return weatherCode == 0;
-}
-
 static auto formatForecastMetric(const ForecastEntry& entry) -> std::string {
-    if (isClearForecastWeather(entry.weatherCode)) {
-        return "";
-    }
-
     if (entry.precipitation > 0.0F) {
         std::string label = formatDecimal(entry.precipitation);
         label += "mm";
         return label;
     }
 
-    if (entry.precipitationProbability >= 0.0F) {
-        const int probability = static_cast<int>(std::lround(entry.precipitationProbability));
-        return std::to_string(probability) + "%";
+    if (entry.humidity >= 0.0F) {
+        const int humidity = static_cast<int>(std::lround(entry.humidity));
+        return std::to_string(humidity) + "%";
     }
 
     return "";

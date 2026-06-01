@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 /*
- * GeekMagic Open Firmware
+ * SmallTV-Ultra Korean Custom Firmware
  * Copyright (C) 2026 Times-Z
  *
  * This program is free software: you can redistribute it and/or modify
@@ -59,10 +59,16 @@ class ConfigManager {
     void setWeatherLatitude(float latitude);
     float getWeatherLongitude() const;
     void setWeatherLongitude(float longitude);
+    int getWeatherKmaGridX() const;
+    void setWeatherKmaGridX(int gridX);
+    int getWeatherKmaGridY() const;
+    void setWeatherKmaGridY(int gridY);
     const char* getWeatherTimezone() const;
     void setWeatherTimezone(const char* timezone);
     const char* getWeatherLocationName() const;
     void setWeatherLocationName(const char* locationName);
+    const char* getWeatherKmaApiKey() const;
+    void setWeatherKmaApiKey(const char* apiKey);
     const char* getTimezoneRegion() const;
     void setTimezoneRegion(const char* region);
     int getTimezoneOffsetMinutes() const;
@@ -81,8 +87,11 @@ class ConfigManager {
     bool weather_enabled = true;
     float weather_latitude = 37.566F;
     float weather_longitude = 126.9784F;
+    int weather_kma_grid_x = 60;
+    int weather_kma_grid_y = 127;
     std::string weather_timezone = "Asia/Seoul";
-    std::string weather_location_name = "서울특별시";
+    std::string weather_location_name = "서울시";
+    std::string weather_kma_api_key = "";
     std::string timezone_region = "Asia/Seoul";
     int timezone_offset_minutes = 540;
     std::string ntp_server;

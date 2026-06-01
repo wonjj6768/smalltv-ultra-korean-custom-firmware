@@ -47,6 +47,7 @@ auto WiFiManager::isConnected() -> bool { return true; }
 auto WiFiManager::getConnectedSSID() -> String { return String("Host WiFi"); }
 
 static auto applyWeatherPreset(WeatherClient::Snapshot& snapshot, const std::string& preset, std::time_t now) -> void {
+    const std::string scenario = preset == "aq-korea" ? "air" : preset;
     snapshot = {};
     snapshot.hasData = true;
     snapshot.hasAirQuality = true;
@@ -65,10 +66,11 @@ static auto applyWeatherPreset(WeatherClient::Snapshot& snapshot, const std::str
     snapshot.currentWeatherCode = 0;
     snapshot.currentPrecipitation = 0.0F;
     snapshot.currentPrecipitationProbability = 0.0F;
+    snapshot.currentHumidity = 55.0F;
     snapshot.currentRain = 0.0F;
     snapshot.isRaining = false;
 
-    if (preset == "rain") {
+    if (scenario == "rain") {
         snapshot.currentTemperature = 19.0F;
         snapshot.currentWeatherCode = 61;
         snapshot.currentPrecipitation = 2.4F;
@@ -77,19 +79,19 @@ static auto applyWeatherPreset(WeatherClient::Snapshot& snapshot, const std::str
         snapshot.currentCloudCover = 96.0F;
         snapshot.currentVisibility = 5000.0F;
         snapshot.isRaining = true;
-    } else if (preset == "fog") {
+    } else if (scenario == "fog") {
         snapshot.currentTemperature = 14.0F;
         snapshot.currentWeatherCode = 45;
         snapshot.currentCloudCover = 88.0F;
         snapshot.currentVisibility = 900.0F;
-    } else if (preset == "air") {
+    } else if (scenario == "air") {
         snapshot.currentTemperature = 21.0F;
         snapshot.currentWeatherCode = 3;
         snapshot.currentCloudCover = 46.0F;
         snapshot.currentVisibility = 8000.0F;
         snapshot.currentPm25 = 41.0F;
         snapshot.currentOzone = 196.0F;
-    } else if (preset == "clear") {
+    } else if (scenario == "clear") {
         snapshot.currentTemperature = 26.0F;
         snapshot.currentWeatherCode = 0;
         snapshot.currentCloudCover = 3.0F;
@@ -98,9 +100,9 @@ static auto applyWeatherPreset(WeatherClient::Snapshot& snapshot, const std::str
 
     const int weatherCodes[4] = {
         snapshot.currentWeatherCode,
-        preset == "clear" ? 1 : (preset == "fog" ? 48 : (preset == "air" ? 2 : 63)),
-        preset == "rain" ? 80 : 2,
-        preset == "clear" ? 3 : (preset == "fog" ? 45 : (preset == "air" ? 3 : 81)),
+        scenario == "clear" ? 1 : (scenario == "fog" ? 48 : (scenario == "air" ? 2 : 63)),
+        scenario == "rain" ? 80 : 2,
+        scenario == "clear" ? 3 : (scenario == "fog" ? 45 : (scenario == "air" ? 3 : 81)),
     };
 
     const float temperatures[4] = {
@@ -112,16 +114,23 @@ static auto applyWeatherPreset(WeatherClient::Snapshot& snapshot, const std::str
 
     const float precipitation[4] = {
         snapshot.currentPrecipitation,
-        preset == "rain" ? 1.6F : 0.0F,
+        scenario == "rain" ? 1.6F : 0.0F,
         0.0F,
-        preset == "rain" ? 0.4F : 0.0F,
+        scenario == "rain" ? 0.4F : 0.0F,
     };
 
     const float probability[4] = {
         snapshot.currentPrecipitationProbability,
-        preset == "clear" ? 0.0F : 45.0F,
-        preset == "clear" ? 0.0F : 35.0F,
-        preset == "clear" ? 0.0F : 25.0F,
+        scenario == "clear" ? 0.0F : 45.0F,
+        scenario == "clear" ? 0.0F : 35.0F,
+        scenario == "clear" ? 0.0F : 25.0F,
+    };
+
+    const float humidity[4] = {
+        scenario == "rain" ? 88.0F : 55.0F,
+        scenario == "rain" ? 91.0F : 52.0F,
+        scenario == "rain" ? 86.0F : 48.0F,
+        scenario == "rain" ? 82.0F : 45.0F,
     };
 
     for (size_t index = 0; index < snapshot.forecast.size(); ++index) {
@@ -131,6 +140,7 @@ static auto applyWeatherPreset(WeatherClient::Snapshot& snapshot, const std::str
         entry.rain = precipitation[index];
         entry.precipitation = precipitation[index];
         entry.precipitationProbability = probability[index];
+        entry.humidity = humidity[index];
         entry.weatherCode = weatherCodes[index];
     }
 }
@@ -174,6 +184,7 @@ static auto renderTextPreset(Arduino_GFX* gfx) -> void {
 }
 
 static auto presetTimestamp(const std::string& preset) -> std::time_t {
+    const std::string scenario = preset == "aq-korea" ? "air" : preset;
     std::tm localTime = {};
     localTime.tm_year = 2026 - 1900;
     localTime.tm_mon = 3;
@@ -182,15 +193,15 @@ static auto presetTimestamp(const std::string& preset) -> std::time_t {
     localTime.tm_min = 56;
     localTime.tm_sec = 20;
 
-    if (preset == "rain") {
+    if (scenario == "rain") {
         localTime.tm_hour = 21;
         localTime.tm_min = 8;
         localTime.tm_sec = 35;
-    } else if (preset == "fog") {
+    } else if (scenario == "fog") {
         localTime.tm_hour = 6;
         localTime.tm_min = 42;
         localTime.tm_sec = 10;
-    } else if (preset == "air") {
+    } else if (scenario == "air") {
         localTime.tm_hour = 15;
         localTime.tm_min = 24;
         localTime.tm_sec = 48;
@@ -206,6 +217,58 @@ static auto parseArg(int argc, char** argv, const std::string& key, const std::s
         }
     }
     return fallback;
+}
+
+static auto envValue(const char* name) -> const char* {
+    const char* value = std::getenv(name);
+    return value != nullptr && value[0] != '\0' ? value : nullptr;
+}
+
+static auto envFloat(const char* name, float fallback) -> float {
+    const char* value = envValue(name);
+    return value == nullptr ? fallback : std::strtof(value, nullptr);
+}
+
+static auto envInt(const char* name, int fallback) -> int {
+    const char* value = envValue(name);
+    return value == nullptr ? fallback : std::atoi(value);
+}
+
+static auto envTime(const char* name, std::time_t fallback) -> std::time_t {
+    const char* value = envValue(name);
+    return value == nullptr ? fallback : static_cast<std::time_t>(std::atoll(value));
+}
+
+static auto applyWeatherEnvOverride(WeatherClient::Snapshot& snapshot) -> void {
+    if (envValue("HOST_WEATHER_HAS_DATA") == nullptr) {
+        return;
+    }
+
+    snapshot.hasData = envInt("HOST_WEATHER_HAS_DATA", 1) != 0;
+    snapshot.hasAirQuality = envInt("HOST_WEATHER_HAS_AIR", 0) != 0;
+    snapshot.currentTime = envTime("HOST_WEATHER_CURRENT_TIME", snapshot.currentTime);
+    snapshot.lastUpdated = envTime("HOST_WEATHER_LAST_UPDATED", snapshot.lastUpdated);
+    snapshot.currentTemperature = envFloat("HOST_WEATHER_CURRENT_TEMP", snapshot.currentTemperature);
+    snapshot.currentRain = envFloat("HOST_WEATHER_CURRENT_RAIN", snapshot.currentRain);
+    snapshot.currentPrecipitation = envFloat("HOST_WEATHER_CURRENT_PRECIP", snapshot.currentPrecipitation);
+    snapshot.currentPrecipitationProbability =
+        envFloat("HOST_WEATHER_CURRENT_PROB", snapshot.currentPrecipitationProbability);
+    snapshot.currentHumidity = envFloat("HOST_WEATHER_CURRENT_HUMIDITY", snapshot.currentHumidity);
+    snapshot.currentWeatherCode = envInt("HOST_WEATHER_CURRENT_CODE", snapshot.currentWeatherCode);
+    snapshot.isRaining = snapshot.currentRain > 0.0F || snapshot.currentPrecipitation > 0.0F;
+    snapshot.timezone = envValue("HOST_WEATHER_TIMEZONE") != nullptr ? envValue("HOST_WEATHER_TIMEZONE") : "Asia/Seoul";
+
+    for (size_t index = 0; index < snapshot.forecast.size(); ++index) {
+        const std::string prefix = "HOST_WEATHER_F" + std::to_string(index) + "_";
+        auto& entry = snapshot.forecast[index];
+        entry.timestamp = envTime((prefix + "TIME").c_str(), entry.timestamp);
+        entry.temperature = envFloat((prefix + "TEMP").c_str(), entry.temperature);
+        entry.rain = envFloat((prefix + "RAIN").c_str(), entry.rain);
+        entry.precipitation = envFloat((prefix + "PRECIP").c_str(), entry.precipitation);
+        entry.precipitationProbability = envFloat((prefix + "PROB").c_str(), entry.precipitationProbability);
+        entry.humidity = envFloat((prefix + "HUMIDITY").c_str(), entry.humidity);
+        entry.weatherCode = envInt((prefix + "CODE").c_str(), entry.weatherCode);
+    }
 }
 
 int main(int argc, char** argv) {
@@ -233,12 +296,14 @@ int main(int argc, char** argv) {
 
     WeatherClient weather;
     weatherClient = &weather;
-    configManager.weather_location_name = "서울특별시";
+    configManager.weather_location_name = "서울시";
     g_hostNow = presetTimestamp(preset);
     applyWeatherPreset(weather.mutableSnapshot(), preset, g_hostNow);
+    applyWeatherEnvOverride(weather.mutableSnapshot());
+    g_hostNow = envTime("HOST_NOW", g_hostNow);
 
     DisplayManager::begin();
-    if (preset == "text") {
+    if (preset == "text" || preset == "fallback-text") {
         renderTextPreset(DisplayManager::getGfx());
     } else {
         DisplayManager::update();

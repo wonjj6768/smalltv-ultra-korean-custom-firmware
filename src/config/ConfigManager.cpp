@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 /*
- * GeekMagic Open Firmware
+ * SmallTV-Ultra Korean Custom Firmware
  * Copyright (C) 2026 Times-Z
  *
  * This program is free software: you can redistribute it and/or modify
@@ -39,6 +39,10 @@ static auto normalizeWeatherTimezone(const String& value) -> String {
 static auto normalizeWeatherLocationName(const String& value) -> String {
     String normalized = value;
     normalized.trim();
+    normalized.replace("특별자치시", "시");
+    normalized.replace("특별시", "시");
+    normalized.replace("광역시", "시");
+    normalized.replace("특별자치도", "도");
     return normalized;
 }
 
@@ -97,12 +101,16 @@ auto ConfigManager::load() -> bool {
 
     File file = LittleFS.open(filename.c_str(), "r");
     if (!file) {
+        this->ssid = secure.get("wifi_ssid").c_str();
+        this->password = secure.get("wifi_password").c_str();
         return save();
     }
 
     size_t size = file.size();
     if (size == 0) {
         file.close();
+        this->ssid = secure.get("wifi_ssid").c_str();
+        this->password = secure.get("wifi_password").c_str();
         return save();
     }
 
@@ -126,8 +134,11 @@ auto ConfigManager::load() -> bool {
     bool weather_enabled_cfg = doc["weather_enabled"] | weather_enabled;
     float weather_latitude_cfg = doc["weather_latitude"] | weather_latitude;
     float weather_longitude_cfg = doc["weather_longitude"] | weather_longitude;
+    int weather_kma_grid_x_cfg = doc["weather_kma_grid_x"] | weather_kma_grid_x;
+    int weather_kma_grid_y_cfg = doc["weather_kma_grid_y"] | weather_kma_grid_y;
     String weather_timezone_cfg = doc["weather_timezone"] | weather_timezone.c_str();
     String weather_location_name_cfg = doc["weather_location_name"] | weather_location_name.c_str();
+    String weather_kma_api_key_cfg = doc["weather_kma_api_key"] | weather_kma_api_key.c_str();
     String timezone_region_cfg = doc["timezone_region"] | "";
     int timezone_offset_minutes_cfg = doc["timezone_offset_minutes"] | timezone_offset_minutes;
 
@@ -137,8 +148,12 @@ auto ConfigManager::load() -> bool {
     this->weather_enabled = weather_enabled_cfg;
     this->weather_latitude = weather_latitude_cfg;
     this->weather_longitude = weather_longitude_cfg;
+    this->weather_kma_grid_x = weather_kma_grid_x_cfg;
+    this->weather_kma_grid_y = weather_kma_grid_y_cfg;
     this->weather_timezone = normalizeWeatherTimezone(weather_timezone_cfg).c_str();
     this->weather_location_name = normalizeWeatherLocationName(weather_location_name_cfg).c_str();
+    weather_kma_api_key_cfg.trim();
+    this->weather_kma_api_key = weather_kma_api_key_cfg.c_str();
     this->timezone_region =
         normalizeTimezoneRegion(timezone_region_cfg.length() == 0 ? timezoneRegionFromOffsetMinutes(timezone_offset_minutes_cfg)
                                                                   : timezone_region_cfg)
@@ -204,6 +219,14 @@ auto ConfigManager::getWeatherLongitude() const -> float { return weather_longit
 
 auto ConfigManager::setWeatherLongitude(float longitude) -> void { weather_longitude = longitude; }
 
+auto ConfigManager::getWeatherKmaGridX() const -> int { return weather_kma_grid_x; }
+
+auto ConfigManager::setWeatherKmaGridX(int gridX) -> void { weather_kma_grid_x = gridX; }
+
+auto ConfigManager::getWeatherKmaGridY() const -> int { return weather_kma_grid_y; }
+
+auto ConfigManager::setWeatherKmaGridY(int gridY) -> void { weather_kma_grid_y = gridY; }
+
 auto ConfigManager::getWeatherTimezone() const -> const char* { return weather_timezone.c_str(); }
 
 auto ConfigManager::setWeatherTimezone(const char* timezone) -> void {
@@ -217,6 +240,16 @@ auto ConfigManager::getWeatherLocationName() const -> const char* { return weath
 auto ConfigManager::setWeatherLocationName(const char* locationName) -> void {
     if (locationName != nullptr) {
         weather_location_name = normalizeWeatherLocationName(locationName).c_str();
+    }
+}
+
+auto ConfigManager::getWeatherKmaApiKey() const -> const char* { return weather_kma_api_key.c_str(); }
+
+auto ConfigManager::setWeatherKmaApiKey(const char* apiKey) -> void {
+    if (apiKey != nullptr) {
+        String normalized = apiKey;
+        normalized.trim();
+        weather_kma_api_key = normalized.c_str();
     }
 }
 
@@ -296,8 +329,11 @@ auto ConfigManager::save() -> bool {
     doc["weather_enabled"] = weather_enabled;
     doc["weather_latitude"] = weather_latitude;
     doc["weather_longitude"] = weather_longitude;
+    doc["weather_kma_grid_x"] = weather_kma_grid_x;
+    doc["weather_kma_grid_y"] = weather_kma_grid_y;
     doc["weather_timezone"] = weather_timezone.c_str();
     doc["weather_location_name"] = weather_location_name.c_str();
+    doc["weather_kma_api_key"] = weather_kma_api_key.c_str();
     doc["timezone_region"] = timezone_region.c_str();
     doc["timezone_offset_minutes"] = timezone_offset_minutes;
     if (!this->ntp_server.empty()) {

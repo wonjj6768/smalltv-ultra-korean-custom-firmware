@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 /*
- * GeekMagic Open Firmware
+ * SmallTV-Ultra Korean Custom Firmware
  * Copyright (C) 2026 Times-Z
  *
  * This program is free software: you can redistribute it and/or modify
@@ -27,6 +27,7 @@ void registerApiEndpoints(Webserver* webserver);
 void handleOtaUpload(Webserver* webserver, int mode);
 void handleOtaFinished(Webserver* webserver);
 void handleReboot(Webserver* webserver);
+void handleFactoryReset(Webserver* webserver);
 void handleOtaStatus(Webserver* webserver);
 void handleOtaCancel(Webserver* webserver);
 

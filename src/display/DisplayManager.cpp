@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 /*
- * GeekMagic Open Firmware
+ * SmallTV-Ultra Korean Custom Firmware
  * Copyright (C) 2026 Times-Z
  *
  * This program is free software: you can redistribute it and/or modify
@@ -61,15 +61,6 @@ static constexpr time_t CLOCK_REASONABLE_EPOCH = 1600000000UL;
 static constexpr uint32_t STARTUP_CLOCK_PAUSE_MS = 12000;
 static constexpr uint32_t TRANSIENT_CLOCK_PAUSE_MS = 5000;
 static constexpr int16_t CURRENT_WEATHER_ICON_Y = 0;
-static constexpr int16_t CURRENT_WEATHER_METRIC_Y = 30;
-static constexpr int16_t CURRENT_WEATHER_METRIC_HEIGHT = 12;
-static constexpr int16_t CURRENT_WEATHER_METRIC_WIDTH = 52;
-static constexpr int16_t CURRENT_WEATHER_METRIC_RIGHT_GAP = 6;
-static constexpr int16_t CURRENT_WEATHER_AQI_TOP_Y = 2;
-static constexpr int16_t CURRENT_WEATHER_AQI_ROW_GAP = 12;
-static constexpr int16_t CURRENT_WEATHER_AQI_RIGHT_GAP = 6;
-static constexpr int16_t CURRENT_WEATHER_AQI_WIDTH = 42;
-static constexpr int16_t CURRENT_WEATHER_AQI_HEIGHT = 24;
 static constexpr int16_t CURRENT_WEATHER_BADGE_SIZE = 22;
 static constexpr int16_t CURRENT_WEATHER_HEADER_TEXT_HEIGHT = 28;
 static constexpr int16_t CLOCK_TIME_CANVAS_WIDTH = 212;
@@ -78,6 +69,7 @@ static constexpr int16_t CLOCK_SECONDS_DIGIT_GAP = 2;
 
 static unsigned long g_clockPausedUntilMs = 0;
 static time_t g_lastClockDrawnSecond = 0;
+static time_t g_lastClockStaticMinute = -1;
 static bool g_clockLastHadValidTime = false;
 static uint8_t g_clockLastLayoutKey = 0xFF;
 static String g_clockTitleCache;
@@ -89,12 +81,7 @@ static String g_weatherCurrentCache;
 static std::array<String, 4> g_weatherForecastCache{};
 static int g_currentWeatherIconCache = -999;
 static std::array<int, 4> g_forecastWeatherIconCache = {-999, -999, -999, -999};
-static String g_currentWeatherMetricCache;
-static String g_currentPmCache;
-static String g_currentO3Cache;
 static String g_currentIpCache;
-static uint16_t g_currentPmColorCache = 0;
-static uint16_t g_currentO3ColorCache = 0;
 static bool g_currentUmbrellaBadgeCache = false;
 static String g_waitLine1Cache;
 static String g_waitLine2Cache;
@@ -105,7 +92,7 @@ static Arduino_Canvas_Indexed* g_clockTimeCanvas = nullptr;
 static int16_t g_clockTimeCanvasHeight = 0;
 static String g_clockTimeCanvasCache;
 static Arduino_Canvas_Indexed* g_clockSecondsCanvas = nullptr;
-static String g_clockSecondsCanvasCache;
+static char g_clockSecondsCanvasCache[3] = "";
 
 static constexpr auto lcdColor565(uint8_t red, uint8_t green, uint8_t blue) -> uint16_t;
 static constexpr auto lcdClockPrimaryTextColor() -> uint16_t;
@@ -115,6 +102,16 @@ static constexpr auto lcdClockDividerColor() -> uint16_t;
 static constexpr auto lcdClockIpTextColor() -> uint16_t;
 static auto lcdBlendColor565(uint16_t fgColor, uint16_t bgColor, uint8_t alpha, uint8_t maxAlpha) -> uint16_t;
 static auto lcdReadPackedAlpha(const uint8_t* bitmap, size_t pixelIndex, uint8_t bitsPerPixel) -> uint8_t;
+
+static void lcdDestroyIndexedCanvas(Arduino_Canvas_Indexed*& canvas) {
+    if (canvas == nullptr) {
+        return;
+    }
+
+    canvas->~Arduino_Canvas_Indexed();
+    ::operator delete(canvas);
+    canvas = nullptr;
+}
 
 static auto lcdClockTimeCanvasWidth() -> int16_t {
     return CLOCK_TIME_CANVAS_WIDTH;
@@ -167,8 +164,7 @@ static void lcdEnsureClockTimeCanvas() {
 
     if (!g_clockTimeCanvas->begin(GFX_SKIP_OUTPUT_BEGIN)) {
         Logger::warn("Clock time canvas init failed, falling back to direct LCD updates", "DisplayManager");
-        delete g_clockTimeCanvas;
-        g_clockTimeCanvas = nullptr;
+        lcdDestroyIndexedCanvas(g_clockTimeCanvas);
         g_clockTimeCanvasHeight = 0;
         return;
     }
@@ -193,8 +189,7 @@ static void lcdEnsureClockSecondsCanvas() {
 
     if (!g_clockSecondsCanvas->begin(GFX_SKIP_OUTPUT_BEGIN)) {
         Logger::warn("Clock seconds canvas init failed, falling back to direct LCD updates", "DisplayManager");
-        delete g_clockSecondsCanvas;
-        g_clockSecondsCanvas = nullptr;
+        lcdDestroyIndexedCanvas(g_clockSecondsCanvas);
         return;
     }
 
@@ -205,6 +200,7 @@ static void lcdEnsureClockSecondsCanvas() {
 
 static void lcdResetClockLayoutCache() {
     g_clockLastLayoutKey = 0xFF;
+    g_lastClockStaticMinute = -1;
     g_clockTitleCache = "";
     g_clockPrimaryTimeCache = "";
     g_clockSecondaryBlockCache = "";
@@ -217,14 +213,9 @@ static void lcdResetClockLayoutCache() {
     g_clockSecondaryRegionX = -1;
     g_clockSecondaryRegionWidth = 0;
     g_clockTimeCanvasCache = "";
-    g_clockSecondsCanvasCache = "";
+    g_clockSecondsCanvasCache[0] = '\0';
     g_currentWeatherIconCache = -999;
-    g_currentWeatherMetricCache = "";
-    g_currentPmCache = "";
-    g_currentO3Cache = "";
     g_currentIpCache = "";
-    g_currentPmColorCache = 0;
-    g_currentO3ColorCache = 0;
     g_currentUmbrellaBadgeCache = false;
     g_forecastWeatherIconCache.fill(-999);
     for (auto& line : g_weatherForecastCache) {
@@ -244,6 +235,10 @@ static auto lcdTrimTextToWidth(Arduino_GFX* target, const String& text, uint8_t 
 static auto lcdMeasureSevenSegmentTextWidth(const String& text, int16_t digitHeight) -> int16_t;
 static void lcdDrawTextAt(Arduino_GFX* target, int16_t xPos, int16_t topY, const String& text, uint8_t textSize,
                           uint16_t fgColor, uint16_t bgColor);
+static auto lcdVectorPixelWidth(char value, int16_t digitHeight) -> int16_t;
+static auto lcdSevenSegmentCellWidth(char value, int16_t digitHeight) -> int16_t;
+static void lcdDrawSevenSegmentDigit(Arduino_GFX* target, int16_t xPos, int16_t topY, char value, int16_t digitHeight,
+                                     uint16_t color);
 static void lcdDrawSevenSegmentText(Arduino_GFX* target, int16_t xPos, int16_t topY, const String& text,
                                     int16_t digitHeight, uint16_t color);
 static void lcdDrawClockDashboardIcons(Arduino_GFX* target, const ClockDashboard::Scene& scene, bool forceRedraw,
@@ -286,8 +281,12 @@ static void lcdDrawClockTimeCanvas(const String& primaryTime, const String& seco
     g_clockTimeCanvasCache = cacheKey;
 }
 
-static void lcdDrawClockSecondsCanvas(const String& secondsDigits) {
-    if (g_clockSecondsCanvasCache == secondsDigits) {
+static void lcdDrawClockSecondsCanvas(const char* secondsDigits) {
+    if (secondsDigits == nullptr) {
+        secondsDigits = "";
+    }
+
+    if (strncmp(g_clockSecondsCanvasCache, secondsDigits, sizeof(g_clockSecondsCanvasCache)) == 0) {
         return;
     }
 
@@ -300,24 +299,31 @@ static void lcdDrawClockSecondsCanvas(const String& secondsDigits) {
 
     secondsTarget->fillRect(originX, originY, CLOCK_SECONDS_CANVAS_WIDTH, canvasHeight, LCD_BLACK);
 
-    if (secondsDigits.length() >= 2) {
-        const String tensDigit(secondsDigits.charAt(0));
-        const String onesDigit(secondsDigits.charAt(1));
-        const int16_t tensWidth = lcdMeasureSevenSegmentTextWidth(tensDigit, secondaryHeight);
-        const int16_t onesWidth = lcdMeasureSevenSegmentTextWidth(onesDigit, secondaryHeight);
+    if (secondsDigits[0] != '\0' && secondsDigits[1] != '\0') {
+        const char tensDigit = secondsDigits[0];
+        const char onesDigit = secondsDigits[1];
+        const int16_t tensWidth = lcdSevenSegmentCellWidth(tensDigit, secondaryHeight);
+        const int16_t onesWidth = lcdSevenSegmentCellWidth(onesDigit, secondaryHeight);
         const int16_t tensX = static_cast<int16_t>(originX + ((CLOCK_SECONDS_CANVAS_WIDTH - tensWidth) / 2));
         const int16_t onesX = static_cast<int16_t>(originX + ((CLOCK_SECONDS_CANVAS_WIDTH - onesWidth) / 2));
+        const int16_t tensDrawX = static_cast<int16_t>(
+            tensX + std::max<int16_t>((tensWidth - lcdVectorPixelWidth(tensDigit, secondaryHeight)) / 2, 0));
+        const int16_t onesDrawX = static_cast<int16_t>(
+            onesX + std::max<int16_t>((onesWidth - lcdVectorPixelWidth(onesDigit, secondaryHeight)) / 2, 0));
         const int16_t firstDigitY = originY;
         const int16_t secondDigitY = static_cast<int16_t>(originY + secondaryHeight + CLOCK_SECONDS_DIGIT_GAP);
 
-        lcdDrawSevenSegmentText(secondsTarget, tensX, firstDigitY, tensDigit, secondaryHeight, lcdClockSecondaryTextColor());
-        lcdDrawSevenSegmentText(secondsTarget, onesX, secondDigitY, onesDigit, secondaryHeight, lcdClockSecondaryTextColor());
+        lcdDrawSevenSegmentDigit(secondsTarget, tensDrawX, firstDigitY, tensDigit, secondaryHeight,
+                                 lcdClockSecondaryTextColor());
+        lcdDrawSevenSegmentDigit(secondsTarget, onesDrawX, secondDigitY, onesDigit, secondaryHeight,
+                                 lcdClockSecondaryTextColor());
     }
 
     if (g_clockSecondsCanvas != nullptr) {
         g_clockSecondsCanvas->flush();
     }
-    g_clockSecondsCanvasCache = secondsDigits;
+    strncpy(g_clockSecondsCanvasCache, secondsDigits, sizeof(g_clockSecondsCanvasCache) - 1);
+    g_clockSecondsCanvasCache[sizeof(g_clockSecondsCanvasCache) - 1] = '\0';
 }
 
 static void lcdFlushClockCanvases() {
@@ -349,7 +355,7 @@ static auto lcdForecastMetricColor(const String& text) -> uint16_t {
         return lcdColor565(120, 196, 255);
     }
     if (text.endsWith("%")) {
-        return lcdColor565(158, 164, 170);
+        return lcdColor565(198, 204, 210);
     }
     return lcdClockPrimaryTextColor();
 }
@@ -437,79 +443,6 @@ static auto lcdReadPackedAlpha(const uint8_t* bitmap, size_t pixelIndex, uint8_t
         default:
             return 0U;
     }
-}
-
-static auto lcdAirQualityGoodColor() -> uint16_t {
-    return lcdColor565(105, 226, 154);
-}
-
-static auto lcdAirQualityModerateColor() -> uint16_t {
-    return lcdColor565(255, 196, 95);
-}
-
-static auto lcdAirQualityBadColor() -> uint16_t {
-    return lcdColor565(255, 151, 92);
-}
-
-static auto lcdAirQualityVeryBadColor() -> uint16_t {
-    return lcdColor565(255, 108, 108);
-}
-
-static auto lcdPm25KoreaTierColor(float pm25) -> uint16_t {
-    if (pm25 <= 15.0F) {
-        return lcdAirQualityGoodColor();
-    }
-    if (pm25 <= 35.0F) {
-        return lcdAirQualityModerateColor();
-    }
-    if (pm25 <= 75.0F) {
-        return lcdAirQualityBadColor();
-    }
-    return lcdAirQualityVeryBadColor();
-}
-
-static auto lcdOzoneMicrogramsToPpm(float ozoneUgPerM3) -> float {
-    // Convert μg/m³ to ppm at 25°C, 1 atm using molar volume 24.45 L/mol.
-    return ozoneUgPerM3 * 24.45F / (48.0F * 1000.0F);
-}
-
-static auto lcdOzoneKoreaTierColor(float ozoneUgPerM3) -> uint16_t {
-    const float ozonePpm = lcdOzoneMicrogramsToPpm(ozoneUgPerM3);
-    if (ozonePpm <= 0.03F) {
-        return lcdAirQualityGoodColor();
-    }
-    if (ozonePpm <= 0.09F) {
-        return lcdAirQualityModerateColor();
-    }
-    if (ozonePpm <= 0.15F) {
-        return lcdAirQualityBadColor();
-    }
-    return lcdAirQualityVeryBadColor();
-}
-
-static auto lcdOzoneDisplayValue(float ozoneUgPerM3) -> String {
-    const float ozonePpm = lcdOzoneMicrogramsToPpm(ozoneUgPerM3);
-    return String(ozonePpm, 3);
-}
-
-static auto lcdIsClearCurrentWeather(int weatherCode) -> bool {
-    return weatherCode == 0;
-}
-
-static auto lcdCurrentConditionMetric(const WeatherClient::Snapshot& weather) -> String {
-    if (lcdIsClearCurrentWeather(weather.currentWeatherCode)) {
-        return "";
-    }
-
-    if (weather.currentPrecipitation > 0.0F) {
-        return String(weather.currentPrecipitation, 1) + "mm";
-    }
-
-    if (weather.currentPrecipitationProbability >= 0.0F) {
-        return String(static_cast<int>(lroundf(weather.currentPrecipitationProbability))) + "%";
-    }
-
-    return "";
 }
 
 static auto lcdShouldShowUmbrellaBadge(const WeatherClient::Snapshot& weather) -> bool {
@@ -747,6 +680,7 @@ static auto lcdBuildClockDashboardScene(time_t now, bool validTime, bool showClo
         input.weather.currentRain = weather.currentRain;
         input.weather.currentPrecipitation = weather.currentPrecipitation;
         input.weather.currentPrecipitationProbability = weather.currentPrecipitationProbability;
+        input.weather.currentHumidity = weather.currentHumidity;
         input.weather.currentWeatherCode = weather.currentWeatherCode;
         input.weather.timezone = weather.timezone.length() != 0 ? weather.timezone.c_str() : configManager.getWeatherTimezone();
         input.weather.locationName = configManager.getWeatherLocationName();
@@ -758,6 +692,7 @@ static auto lcdBuildClockDashboardScene(time_t now, bool validTime, bool showClo
             input.weather.forecast[i].temperature = weather.forecast[i].temperature;
             input.weather.forecast[i].precipitation = weather.forecast[i].precipitation;
             input.weather.forecast[i].precipitationProbability = weather.forecast[i].precipitationProbability;
+            input.weather.forecast[i].humidity = weather.forecast[i].humidity;
             input.weather.forecast[i].weatherCode = weather.forecast[i].weatherCode;
         }
     }
@@ -779,8 +714,21 @@ static void lcdDrawClockInner() {
                                                    (validTime ? 4U : 0U) | (showSeconds ? 8U : 0U) |
                                                    (use24Hour ? 16U : 0U));
     const time_t drawTick = showSeconds ? now : (now / 60);
+    const time_t minuteTick = now / 60;
 
     if (g_lastClockDrawnSecond == drawTick && g_clockLastHadValidTime == validTime && g_clockLastLayoutKey == layoutKey) {
+        return;
+    }
+
+    if (showSeconds && validTime && g_clockLastHadValidTime == validTime && g_clockLastLayoutKey == layoutKey &&
+        g_lastClockStaticMinute == minuteTick) {
+        tm* timeInfo = std::localtime(&now);
+        char secondsDigits[3] = "";
+        if (timeInfo != nullptr) {
+            snprintf(secondsDigits, sizeof(secondsDigits), "%02d", timeInfo->tm_sec);
+        }
+        g_lastClockDrawnSecond = drawTick;
+        lcdDrawClockSecondsCanvas(secondsDigits);
         return;
     }
 
@@ -821,9 +769,6 @@ static void lcdDrawClockInner() {
         clockTarget->fillRect(0, ClockDashboard::HEADER_Y - 2, static_cast<int16_t>(currentIconX - 8),
                               CURRENT_WEATHER_HEADER_TEXT_HEIGHT, LCD_BLACK);
         g_currentWeatherIconCache = -999;
-        g_currentWeatherMetricCache = "";
-        g_currentPmCache = "";
-        g_currentO3Cache = "";
         g_currentIpCache = "";
         g_currentUmbrellaBadgeCache = false;
         if (!headerLine.isEmpty()) {
@@ -849,60 +794,12 @@ static void lcdDrawClockInner() {
         g_currentIpCache = currentIpValue;
     }
 
-    const WeatherClient::Snapshot* weather = weatherClient != nullptr ? &weatherClient->getSnapshot() : nullptr;
-    const uint16_t aqiLabelColor = lcdColor565(118, 140, 150);
-    if (showWeather && weather != nullptr && weather->hasAirQuality) {
-        const String pmLabel = "PM";
-        const String pmValue = String(static_cast<int>(lroundf(weather->currentPm25)));
-        const String o3Label = lcdString("오존");
-        const String o3Value = lcdOzoneDisplayValue(weather->currentOzone);
-        const uint16_t pmColor = lcdPm25KoreaTierColor(weather->currentPm25);
-        const uint16_t o3Color = lcdOzoneKoreaTierColor(weather->currentOzone);
-        const String pmCacheKey = pmLabel + "|" + pmValue;
-        const String o3CacheKey = o3Label + "|" + o3Value;
-
-        if (forceStaticRedraw || g_currentPmCache != pmCacheKey || g_currentPmColorCache != pmColor ||
-            g_currentO3Cache != o3CacheKey || g_currentO3ColorCache != o3Color) {
-            const int16_t aqiAreaX =
-                static_cast<int16_t>(currentIconX - CURRENT_WEATHER_AQI_RIGHT_GAP - CURRENT_WEATHER_AQI_WIDTH);
-            clockTarget->fillRect(aqiAreaX, CURRENT_WEATHER_AQI_TOP_Y, CURRENT_WEATHER_AQI_WIDTH,
-                                  CURRENT_WEATHER_AQI_HEIGHT, LCD_BLACK);
-
-            const int16_t pmLabelWidth = lcdMeasureTextWidthForSize(clockTarget, pmLabel, 1);
-            const int16_t o3LabelWidth = lcdMeasureTextWidthForSize(clockTarget, o3Label, 1);
-            const int16_t labelColumnWidth = std::max<int16_t>(pmLabelWidth, o3LabelWidth);
-            const int16_t valueColumnWidth = lcdMeasureTextWidthForSize(clockTarget, "0.000", 1);
-            const int16_t valueX = static_cast<int16_t>(aqiAreaX + CURRENT_WEATHER_AQI_WIDTH - valueColumnWidth);
-            const int16_t labelX = static_cast<int16_t>(valueX - 4 - labelColumnWidth);
-
-            lcdDrawTextAt(clockTarget, labelX, CURRENT_WEATHER_AQI_TOP_Y, pmLabel, 1, aqiLabelColor, LCD_BLACK);
-            lcdDrawTextAt(clockTarget, valueX, CURRENT_WEATHER_AQI_TOP_Y, pmValue, 1, pmColor, LCD_BLACK);
-
-            const int16_t o3Y = static_cast<int16_t>(CURRENT_WEATHER_AQI_TOP_Y + CURRENT_WEATHER_AQI_ROW_GAP);
-            lcdDrawTextAt(clockTarget, labelX, o3Y, o3Label, 1, aqiLabelColor, LCD_BLACK);
-            lcdDrawTextAt(clockTarget, valueX, o3Y, o3Value, 1, o3Color, LCD_BLACK);
-
-            g_currentPmCache = pmCacheKey;
-            g_currentO3Cache = o3CacheKey;
-            g_currentPmColorCache = pmColor;
-            g_currentO3ColorCache = o3Color;
-        }
-    } else if (!g_currentPmCache.isEmpty() || !g_currentO3Cache.isEmpty()) {
-        clockTarget->fillRect(
-            static_cast<int16_t>(currentIconX - CURRENT_WEATHER_AQI_RIGHT_GAP - CURRENT_WEATHER_AQI_WIDTH),
-            CURRENT_WEATHER_AQI_TOP_Y, CURRENT_WEATHER_AQI_WIDTH, CURRENT_WEATHER_AQI_HEIGHT, LCD_BLACK);
-        g_currentPmCache = "";
-        g_currentO3Cache = "";
-        g_currentPmColorCache = 0;
-        g_currentO3ColorCache = 0;
-    }
-
     String primaryTime = scene.clockPrimary.empty() ? lcdString(scene.clockTime) : lcdString(scene.clockPrimary);
     tm* timeInfo = std::localtime(&now);
-    const String secondsDigits =
-        (showClock && validTime && timeInfo != nullptr)
-            ? String(timeInfo->tm_sec < 10 ? "0" : "") + String(timeInfo->tm_sec)
-            : String("");
+    char secondsDigits[3] = "";
+    if (showClock && validTime && timeInfo != nullptr) {
+        snprintf(secondsDigits, sizeof(secondsDigits), "%02d", timeInfo->tm_sec);
+    }
     const String suffixText = lcdString(scene.clockSuffix);
     const uint8_t suffixSize = suffixText.isEmpty() ? 0U : 1U;
     const int16_t suffixWidth = suffixText.isEmpty() ? 0 : lcdMeasureTextWidthForSize(clockTarget, suffixText, suffixSize);
@@ -965,9 +862,6 @@ static void lcdDrawClockInner() {
                 clockTarget->fillRect(clearX, ClockDashboard::TIME_TOP_Y, clearWidth, timeBlockHeight, LCD_BLACK);
             }
 
-            if (!secondsDigits.isEmpty()) {
-                // Seconds are rendered by a dedicated canvas to keep the main time block stable.
-            }
             if (!suffixText.isEmpty()) {
                 lcdDrawCenteredText(clockTarget, suffixY, suffixText, suffixSize, lcdClockSecondaryTextColor(), LCD_BLACK,
                                     false, secondaryX, secondaryBlockWidth);
@@ -1006,27 +900,6 @@ static void lcdDrawClockInner() {
                                 ClockDashboard::SCREEN_W);
         }
         g_clockDateCache = clockDateKey;
-    }
-
-    if (showWeather && weather != nullptr && weather->hasData && scene.weatherIconCode >= 0) {
-        const String currentMetric = lcdCurrentConditionMetric(*weather);
-        if (forceStaticRedraw || g_currentWeatherMetricCache != currentMetric) {
-            const int16_t metricAreaW = CURRENT_WEATHER_METRIC_WIDTH;
-            const int16_t metricAreaX =
-                static_cast<int16_t>(currentIconX - CURRENT_WEATHER_METRIC_RIGHT_GAP - metricAreaW);
-            clockTarget->fillRect(metricAreaX, CURRENT_WEATHER_METRIC_Y, metricAreaW, CURRENT_WEATHER_METRIC_HEIGHT,
-                                  LCD_BLACK);
-            if (!currentMetric.isEmpty()) {
-                lcdDrawCenteredText(clockTarget, CURRENT_WEATHER_METRIC_Y, currentMetric, 1,
-                                    lcdForecastMetricColor(currentMetric), LCD_BLACK, false, metricAreaX, metricAreaW);
-            }
-            g_currentWeatherMetricCache = currentMetric;
-        }
-    } else if (!g_currentWeatherMetricCache.isEmpty()) {
-        clockTarget->fillRect(static_cast<int16_t>(currentIconX - CURRENT_WEATHER_METRIC_RIGHT_GAP - CURRENT_WEATHER_METRIC_WIDTH),
-                              CURRENT_WEATHER_METRIC_Y, CURRENT_WEATHER_METRIC_WIDTH,
-                              CURRENT_WEATHER_METRIC_HEIGHT, LCD_BLACK);
-        g_currentWeatherMetricCache = "";
     }
 
     g_weatherTitleCache = "";
@@ -1074,6 +947,7 @@ static void lcdDrawClockInner() {
     }
     lcdDrawClockDashboardIcons(&g_lcd, scene, forceStaticRedraw, true);
     lcdFlushClockCanvases();
+    g_lastClockStaticMinute = minuteTick;
 }
 
 static void lcdResetTextRenderer(Arduino_GFX* target) {
@@ -2066,6 +1940,7 @@ auto DisplayManager::begin() -> void {
 auto DisplayManager::setRotation(uint8_t rotation, String currentIP) -> void {
     g_lcd.setRotation(rotation);
     g_lastClockDrawnSecond = 0;
+    g_lastClockStaticMinute = -1;
     lcdResetClockLayoutCache();
     DisplayManager::drawStartup(currentIP);
 
@@ -2092,7 +1967,7 @@ auto DisplayManager::drawStartup(String currentIP) -> void {
     int constexpr titleY = 10;
     int constexpr fontSize = 2;
 
-    DisplayManager::drawTextWrapped(DISPLAY_PADDING, titleY, F("GeekMagic 오픈 펌웨어"), fontSize, LCD_WHITE,
+    DisplayManager::drawTextWrapped(DISPLAY_PADDING, titleY, F("SmallTV-Ultra Korean Custom Firmware"), fontSize, LCD_WHITE,
                                     LCD_BLACK, false);
     DisplayManager::drawTextWrapped(DISPLAY_PADDING, titleY + THREE_LINES_SPACE, String(PROJECT_VER_STR), fontSize,
                                     LCD_WHITE, LCD_BLACK, false);
@@ -2126,6 +2001,7 @@ auto DisplayManager::pauseClock(uint32_t durationMs) -> void {
     const unsigned long nowMs = millis();
     g_clockPausedUntilMs = nowMs + durationMs;
     g_lastClockDrawnSecond = 0;
+    g_lastClockStaticMinute = -1;
     lcdResetClockLayoutCache();
 }
 

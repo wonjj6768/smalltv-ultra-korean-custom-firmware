@@ -1,12 +1,13 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 /*
- * GeekMagic Open Firmware
+ * SmallTV-Ultra Korean Custom Firmware
  * Copyright (C) 2026 Times-Z
  */
 
 #pragma once
 
 #include <Arduino.h>
+#include <IPAddress.h>
 #include <array>
 #include <ctime>
 
@@ -18,6 +19,7 @@ class WeatherClient {
         float rain = 0.0F;
         float precipitation = 0.0F;
         float precipitationProbability = -1.0F;
+        float humidity = -1.0F;
         int weatherCode = -1;
     };
 
@@ -30,6 +32,7 @@ class WeatherClient {
         float currentRain = 0.0F;
         float currentPrecipitation = 0.0F;
         float currentPrecipitationProbability = -1.0F;
+        float currentHumidity = -1.0F;
         float currentCloudCover = 0.0F;
         float currentVisibility = 0.0F;
         float currentPm25 = 0.0F;
@@ -42,6 +45,7 @@ class WeatherClient {
         long utcOffsetSeconds = 0;
         String timezone;
         String status;
+        String source;
         std::array<ForecastEntry, 4> forecast{};
     };
 
@@ -50,12 +54,44 @@ class WeatherClient {
     void begin();
     void loop();
     bool refreshNow();
+    void requestRefresh(unsigned long delayMs = 0);
     const Snapshot& getSnapshot() const;
 
    private:
     bool fetchForecast();
-    static auto buildForecastUrl(float latitude, float longitude, const String& timezone) -> String;
+    bool startKmaRefresh();
+    bool runKmaRefreshStep();
+    bool fetchKmaCurrentStep();
+    enum class StepResult : uint8_t {
+        Continue,
+        Success,
+        Failed,
+    };
+    StepResult fetchKmaForecastStep();
+    void finishKmaRefresh(bool ok);
+
+    enum class RefreshPhase : uint8_t {
+        Idle,
+        Resolve,
+        Current,
+        Forecast,
+    };
 
     Snapshot _snapshot;
     unsigned long _nextRefreshMs = 0;
+    RefreshPhase _refreshPhase = RefreshPhase::Idle;
+    String _pendingNcstDate;
+    String _pendingNcstTime;
+    String _pendingUltraDate;
+    String _pendingUltraTime;
+    int _pendingNx = 0;
+    int _pendingNy = 0;
+    float _pendingCurrentTemperature = 0.0F;
+    float _pendingCurrentRain = 0.0F;
+    float _pendingCurrentHumidity = -1.0F;
+    int _pendingCurrentPty = 0;
+    uint8_t _forecastAttempt = 0;
+    IPAddress _kmaAddress;
+    unsigned long _kmaAddressResolvedMs = 0;
+    bool resolveKmaAddressStep();
 };

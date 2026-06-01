@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 /*
- * GeekMagic Open Firmware
+ * SmallTV-Ultra Korean Custom Firmware
  * Copyright (C) 2026 Times-Z
  *
  * This program is free software: you can redistribute it and/or modify
@@ -45,16 +45,6 @@ static constexpr unsigned long MILLIS_PER_SECOND = 1000UL;
 static constexpr unsigned long DEFAULT_NTP_TIMEOUT_MS = 10000UL;
 
 /**
- * @brief Poll delay in milliseconds
- */
-static constexpr unsigned long POLL_DELAY_MS = 200UL;
-
-/**
- * @brief Retry base delay in milliseconds
- */
-static constexpr unsigned long RETRY_BASE_DELAY_MS = 500UL;
-
-/**
  * @brief Reasonable epoch time to 2020/09/13
  */
 static constexpr time_t REASONABLE_EPOCH = 1600000000UL;
@@ -96,13 +86,18 @@ void NTPClient::begin(uint32_t syncIntervalSeconds, uint8_t maxRetries) {
 void NTPClient::loop() {
     if (!WiFiManager::isConnected()) {
         _lastStatus = "network unavailable";
+        _syncInProgress = false;
         return;
     }
 
     unsigned long nowMs = millis();
+    if (_syncInProgress) {
+        pollSync();
+        return;
+    }
+
     if (nowMs >= _nextSyncAttemptMs) {
-        performSync();
-        _nextSyncAttemptMs = nowMs + (_syncIntervalSeconds * MILLIS_PER_SECOND);
+        startSync();
     }
 }
 
@@ -135,69 +130,51 @@ auto NTPClient::syncNow() -> bool {
         return false;
     }
 
-    performSync();
-
+    startSync();
     return _lastOk;
 }
 
-/**
- * @brief Perform the NTP synchronization
- *
- * @return void
- */
-void NTPClient::performSync() {
+void NTPClient::startSync() {
     Logger::info("Starting NTP sync...", TAG);
+    _syncStartedMs = millis();
+    _syncInProgress = true;
+    _lastStatus = "syncing";
+    applyConfiguration();
+}
 
-    int attempt = 0;
-    time_t now = 0;
-
-    while (attempt < _maxRetries) {
-        attempt++;
-        applyConfiguration();
-
-        unsigned long start = millis();
-        const unsigned long timeoutMs = DEFAULT_NTP_TIMEOUT_MS;
-
-        while ((millis() - start) < timeoutMs) {
-            now = time(nullptr);
-
-            if (now > REASONABLE_EPOCH) {
-                break;
-            }
-
-            delay(static_cast<unsigned long>(POLL_DELAY_MS));
-        }
-
-        if (now > REASONABLE_EPOCH) {
-            _lastSync = now;
-            _lastOk = true;
-            std::array<char, STATUS_BUFFER_SIZE> buf;
-            struct tm* tm_info = localtime(&now);
-
-            snprintf(buf.data(), buf.size(), "Synced: %04d-%02d-%02d %02d:%02d:%02d", tm_info->tm_year + TM_YEAR_BASE,
-                     tm_info->tm_mon + 1, tm_info->tm_mday, tm_info->tm_hour, tm_info->tm_min, tm_info->tm_sec);
-            _lastStatus = buf.data();
-
-            Logger::info(_lastStatus.c_str(), TAG);
-
-            sntp_stop();
-
-            return;
-        }
-
-        std::array<char, STATUS_BUFFER_SIZE> retryBuf;
-        snprintf(retryBuf.data(), retryBuf.size(), "NTP sync attempt %d failed", attempt);
-        Logger::warn(retryBuf.data(), TAG);
-
-        delay(static_cast<unsigned long>(RETRY_BASE_DELAY_MS) * static_cast<unsigned long>(attempt));
+void NTPClient::pollSync() {
+    const time_t now = time(nullptr);
+    if (now > REASONABLE_EPOCH) {
+        finishSync(true, now);
+        return;
     }
 
-    _lastOk = false;
-    _lastStatus = "sync failed";
+    if (millis() - _syncStartedMs >= DEFAULT_NTP_TIMEOUT_MS) {
+        finishSync(false);
+    }
+}
 
+void NTPClient::finishSync(bool ok, time_t now) {
+    _syncInProgress = false;
+    _nextSyncAttemptMs =
+        millis() + (ok ? _syncIntervalSeconds * MILLIS_PER_SECOND : DEFAULT_NTP_TIMEOUT_MS);
     sntp_stop();
 
-    Logger::error("NTP sync failed after retries", TAG);
+    if (!ok) {
+        _lastOk = false;
+        _lastStatus = "sync failed";
+        Logger::warn("NTP sync failed", TAG);
+        return;
+    }
+
+    _lastSync = now;
+    _lastOk = true;
+    std::array<char, STATUS_BUFFER_SIZE> buf;
+    struct tm* tm_info = localtime(&now);
+    snprintf(buf.data(), buf.size(), "Synced: %04d-%02d-%02d %02d:%02d:%02d", tm_info->tm_year + TM_YEAR_BASE,
+             tm_info->tm_mon + 1, tm_info->tm_mday, tm_info->tm_hour, tm_info->tm_min, tm_info->tm_sec);
+    _lastStatus = buf.data();
+    Logger::info(_lastStatus.c_str(), TAG);
 }
 
 /**

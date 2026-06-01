@@ -3,56 +3,85 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>GeekMagic Open Firmware</title>
-    <link rel="stylesheet" href="./css/pico.min.css" />
-    <link rel="stylesheet" href="./css/style.css" />
-    <script src="./js/alpinejs.min.js" defer></script>
-    <script src="./js/utils.js"></script>
-    <script src="./js/themeSwitcher.js"></script>
-    <script src="./js/rebootHandler.js"></script>
-    <script src="./js/main.js"></script>
+    <title>SmallTV-Ultra Custom Firmware</title>
+    <link rel="stylesheet" href="./css/pico.min.css?v=20260601c" />
+    <link rel="stylesheet" href="./css/style.css?v=20260601c" />
+    <script src="./js/alpinejs.min.js?v=20260601c" defer></script>
+    <script src="./js/utils.js?v=20260601c"></script>
+    <script src="./js/themeSwitcher.js?v=20260601c"></script>
+    <script src="./js/rebootHandler.js?v=20260601c"></script>
+    <script src="./js/main.js?v=20260601c"></script>
   </head>
   <body>
-    <main class="container">
+    <main class="container app-shell">
       <header id="header-placeholder"></header>
 
-      <section>
-        <div style="margin-top: 2em; display: flex; gap: 1em; flex-wrap: wrap">
-          <a href="./wifi.html">
-            <button type="button" class="secondary">WiFi</button>
+      <section class="settings-page">
+        <div class="page-hero">
+          <p class="eyebrow">SmallTV-Ultra</p>
+          <h2>Device Settings</h2>
+          <p>
+            Configure only the values this firmware actually uses: network,
+            time, dashboard weather, screen rotation, updates, GIFs, and logs.
+          </p>
+        </div>
+
+        <div class="nav-grid">
+          <a class="nav-card" href="./clock.html">
+            <span>Dashboard</span>
+            <strong>Clock, Korean region, KMA weather</strong>
           </a>
-          <a href="./ntp.html">
-            <button type="button" class="secondary">Time (NTP)</button>
+          <a class="nav-card" href="./wifi.html">
+            <span>WiFi</span>
+            <strong>Network scan and connection</strong>
           </a>
-          <a href="./rotation.html">
-            <button type="button" class="secondary">Screen Rotation</button>
+          <a class="nav-card" href="./ntp.html">
+            <span>Time</span>
+            <strong>NTP server and timezone sync</strong>
           </a>
-          <a href="./clock.html">
-            <button type="button" class="secondary">Dashboard</button>
+          <a class="nav-card" href="./rotation.html">
+            <span>Rotation</span>
+            <strong>LCD orientation</strong>
           </a>
-          <a href="./update.html">
-            <button type="button" class="secondary">
-              Firmware / FS Update
-            </button>
+          <a class="nav-card" href="./update.html">
+            <span>Update</span>
+            <strong>Firmware and LittleFS upload</strong>
           </a>
-          <a href="./gif_upload.html">
-            <button type="button" class="secondary">Upload GIF</button>
+          <a class="nav-card" href="./gif_upload.html">
+            <span>GIF</span>
+            <strong>Optional animated screen assets</strong>
           </a>
-          <a href="./logs.html">
-            <button type="button" class="secondary">Logs</button>
+          <a class="nav-card" href="./logs.html">
+            <span>Logs</span>
+            <strong>Runtime diagnostics</strong>
           </a>
         </div>
 
-        <div x-data="rebootHandler()">
-          <button
-            class="contrast"
-            x-bind:disabled="loading"
-            x-on:click="reboot"
-          >
-            Reboot
-          </button>
+        <article class="setting-card danger-card" x-data="rebootHandler()">
+          <header class="card-heading">
+            <div>
+              <p class="eyebrow">Device Control</p>
+              <h3>Restart / Reset</h3>
+            </div>
+          </header>
+          <div class="action-row">
+            <button
+              class="contrast"
+              x-bind:disabled="loading"
+              x-on:click="reboot"
+            >
+              Reboot
+            </button>
+            <button
+              class="secondary"
+              x-bind:disabled="loading"
+              x-on:click="factoryReset"
+            >
+              Factory Reset
+            </button>
+          </div>
           <p x-text="message"></p>
-        </div>
+        </article>
       </section>
 
       <footer id="footer-placeholder"></footer>

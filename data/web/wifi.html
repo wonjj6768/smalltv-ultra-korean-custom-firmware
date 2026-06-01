@@ -4,13 +4,13 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>WiFi management</title>
-    <link rel="stylesheet" href="./css/pico.min.css" />
-    <link rel="stylesheet" href="./css/style.css" />
-    <script src="./js/alpinejs.min.js" defer></script>
-    <script src="./js/utils.js"></script>
-    <script src="./js/themeSwitcher.js"></script>
-    <script src="./js/wifiHandler.js"></script>
-    <script src="./js/main.js"></script>
+    <link rel="stylesheet" href="./css/pico.min.css?v=20260601" />
+    <link rel="stylesheet" href="./css/style.css?v=20260601" />
+    <script src="./js/alpinejs.min.js?v=20260601" defer></script>
+    <script src="./js/utils.js?v=20260601"></script>
+    <script src="./js/themeSwitcher.js?v=20260601"></script>
+    <script src="./js/wifiHandler.js?v=20260601"></script>
+    <script src="./js/main.js?v=20260601"></script>
   </head>
   <body>
     <main class="container">
@@ -18,7 +18,7 @@
 
       <a href="./index.html" class="wifi-back-link">← Back to Home</a>
 
-      <section x-data="wifiHandler()" class="wifi-section">
+      <section x-data="wifiHandler()" x-init="init()" class="wifi-section">
         <h2>WiFi Configuration</h2>
 
         <div class="wifi-connect">

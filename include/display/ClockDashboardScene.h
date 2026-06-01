@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 /*
- * GeekMagic Open Firmware
+ * SmallTV-Ultra Korean Custom Firmware
  * Copyright (C) 2026 Times-Z
  */
 
@@ -19,6 +19,7 @@ struct ForecastEntry {
     float temperature = 0.0F;
     float precipitation = 0.0F;
     float precipitationProbability = -1.0F;
+    float humidity = -1.0F;
     int weatherCode = -1;
 };
 
@@ -29,6 +30,7 @@ struct WeatherInput {
     float currentRain = 0.0F;
     float currentPrecipitation = 0.0F;
     float currentPrecipitationProbability = -1.0F;
+    float currentHumidity = -1.0F;
     int currentWeatherCode = -1;
     std::string timezone;
     std::string locationName;

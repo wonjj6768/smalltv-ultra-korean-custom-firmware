@@ -4,133 +4,212 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Dashboard</title>
-    <link rel="stylesheet" href="./css/pico.min.css" />
-    <link rel="stylesheet" href="./css/style.css" />
-    <script src="./js/alpinejs.min.js" defer></script>
-    <script src="./js/utils.js"></script>
-    <script src="./js/themeSwitcher.js"></script>
-    <script src="./js/clockHandler.js"></script>
-    <script src="./js/main.js"></script>
+    <link rel="stylesheet" href="./css/pico.min.css?v=20260601c" />
+    <link rel="stylesheet" href="./css/style.css?v=20260601c" />
+    <script src="./js/alpinejs.min.js?v=20260601c" defer></script>
+    <script src="./js/utils.js?v=20260601c"></script>
+    <script src="./js/themeSwitcher.js?v=20260601c"></script>
+    <script src="./js/clockHandler.js?v=20260601c"></script>
+    <script src="./js/main.js?v=20260601c"></script>
   </head>
   <body>
-    <main class="container">
+    <main class="container app-shell">
       <header id="header-placeholder"></header>
 
-      <a href="./index.html" class="wifi-back-link">← Back to Home</a>
+      <a href="./index.html" class="back-link">← Back to Home</a>
 
-      <section x-data="clockHandler()" x-init="init()">
-        <h2>Dashboard</h2>
-
-        <p>Configure the idle dashboard shown on the device.</p>
-
-        <label>
-          <input type="checkbox" x-model="enabled" x-bind:disabled="loading" />
-          Enable clock screen
-        </label>
-
-        <label>
-          <input
-            type="checkbox"
-            x-model="use24h"
-            x-bind:disabled="loading || !enabled"
-          />
-          Use 24-hour time
-        </label>
-
-        <hr />
-
-        <label>
-          <input
-            type="checkbox"
-            x-model="weatherEnabled"
-            x-bind:disabled="loading"
-          />
-          Show weather on the dashboard
-        </label>
-
-        <label for="weather-region">Region</label>
-        <div
-          style="display: flex; gap: 0.5em; flex-wrap: wrap; align-items: center"
-        >
-          <input
-            id="weather-region"
-            type="text"
-            x-model="locationName"
-            x-bind:disabled="loading || !weatherEnabled"
-            placeholder="서울특별시 종로구 청운동"
-            style="flex: 1 1 20rem"
-          />
-          <button
-            type="button"
-            class="secondary"
-            @click="searchRegions()"
-            x-bind:disabled="loading || !weatherEnabled || !locationName.trim()"
-          >
-            Search Region
-          </button>
+      <section x-data="clockHandler()" x-init="init()" class="settings-page">
+        <div class="page-hero">
+          <p class="eyebrow">SmallTV-Ultra Dashboard</p>
+          <h2>Clock + KMA Weather</h2>
+          <p>
+            Configure the values actually used by the device: clock mode,
+            Korean weather region, KMA grid, timezone, and APIHub key.
+          </p>
+          <div class="status-row">
+            <span class="status-pill">KMA APIHub only</span>
+            <span class="status-pill" x-text="locationName || 'No region'"></span>
+            <span class="status-pill">
+              Grid <span x-text="kmaGridX"></span>,
+              <span x-text="kmaGridY"></span>
+            </span>
+          </div>
         </div>
-        <small x-text="regionStatus"></small>
-        <template x-if="regionResults.length">
-          <label for="weather-region-results" style="margin-top: 0.5em">
-            Search Results
-          </label>
-        </template>
-        <template x-if="regionResults.length">
-          <select
-            id="weather-region-results"
-            x-model="selectedRegionResult"
-            x-bind:disabled="loading || !weatherEnabled"
-          >
-            <template x-for="result in regionResults" :key="result.label">
-              <option :value="result.label" x-text="result.label"></option>
+
+        <div class="settings-grid">
+          <article class="setting-card">
+            <header class="card-heading">
+              <div>
+                <p class="eyebrow">Display</p>
+                <h3>Clock Screen</h3>
+              </div>
+            </header>
+
+            <label class="switch-row">
+              <span>
+                <strong>Enable clock screen</strong>
+                <small>Show the dashboard when the device is idle.</small>
+              </span>
+              <input type="checkbox" x-model="enabled" x-bind:disabled="loading" />
+            </label>
+
+            <label class="switch-row">
+              <span>
+                <strong>Use 24-hour time</strong>
+                <small>Recommended for the Korean clock layout.</small>
+              </span>
+              <input
+                type="checkbox"
+                x-model="use24h"
+                x-bind:disabled="loading || !enabled"
+              />
+            </label>
+
+            <label class="switch-row">
+              <span>
+                <strong>Show weather</strong>
+                <small>Use KMA weather on the dashboard forecast row.</small>
+              </span>
+              <input
+                type="checkbox"
+                x-model="weatherEnabled"
+                x-bind:disabled="loading"
+              />
+            </label>
+          </article>
+
+          <article class="setting-card wide-card">
+            <header class="card-heading">
+              <div>
+                <p class="eyebrow">Weather Region</p>
+                <h3>Korean Region Lookup</h3>
+              </div>
+              <span class="status-pill">City-level label</span>
+            </header>
+
+            <label for="weather-region">Region shown on display</label>
+            <div class="field-with-actions">
+              <input
+                id="weather-region"
+                type="text"
+                x-model="locationName"
+                x-bind:disabled="loading || !weatherEnabled"
+                placeholder="춘천시, 서울시, 안양시 동안구"
+              />
+              <button
+                type="button"
+                class="secondary"
+                @click="searchRegions()"
+                x-bind:disabled="loading || !weatherEnabled"
+              >
+                Search
+              </button>
+            </div>
+
+            <div class="field-with-actions">
+              <select
+                x-model="selectedRegionResult"
+                x-bind:disabled="loading || !regionResults.length"
+              >
+                <option value="">Choose matching KMA region</option>
+                <template x-for="result in regionResults" :key="result.full">
+                  <option x-bind:value="result.full" x-text="result.full"></option>
+                </template>
+              </select>
+              <button
+                type="button"
+                @click="applySelectedRegion()"
+                x-bind:disabled="loading || !selectedRegionResult"
+              >
+                Apply
+              </button>
+            </div>
+            <small x-text="regionStatus"></small>
+
+            <div class="metric-grid">
+              <div class="metric-card">
+                <span>Latitude</span>
+                <strong x-text="Number(latitude || 0).toFixed(6)"></strong>
+              </div>
+              <div class="metric-card">
+                <span>Longitude</span>
+                <strong x-text="Number(longitude || 0).toFixed(6)"></strong>
+              </div>
+              <div class="metric-card">
+                <span>KMA Grid X</span>
+                <strong x-text="kmaGridX"></strong>
+              </div>
+              <div class="metric-card">
+                <span>KMA Grid Y</span>
+                <strong x-text="kmaGridY"></strong>
+              </div>
+            </div>
+          </article>
+
+          <article class="setting-card">
+            <header class="card-heading">
+              <div>
+                <p class="eyebrow">KMA Access</p>
+                <h3>API + Timezone</h3>
+              </div>
+            </header>
+
+            <label for="weather-timezone">Weather Timezone</label>
+            <input
+              id="weather-timezone"
+              type="text"
+              x-model="timezone"
+              x-bind:disabled="loading || !weatherEnabled"
+              placeholder="Asia/Seoul"
+            />
+            <small>Use <code>Asia/Seoul</code> for Korea.</small>
+
+            <label for="weather-kma-key">KMA APIHub Key</label>
+            <input
+              id="weather-kma-key"
+              type="password"
+              x-model="kmaApiKey"
+              x-bind:disabled="loading || !weatherEnabled"
+              placeholder="Leave blank to keep the saved key."
+            />
+            <small x-text="kmaKeyStatus"></small>
+          </article>
+
+          <article class="setting-card">
+            <header class="card-heading">
+              <div>
+                <p class="eyebrow">Cached Weather</p>
+                <h3>Weather State</h3>
+              </div>
+              <span class="status-pill" x-text="weatherStatus || 'unknown'"></span>
+            </header>
+
+            <div class="weather-state">
+              <p>
+                <span>Source</span>
+                <strong x-text="weatherSource || 'KMA APIHub'"></strong>
+              </p>
+              <p>
+                <span>Timezone</span>
+                <strong x-text="weatherTimezone || timezone"></strong>
+              </p>
+              <p>
+                <span>Current</span>
+                <strong x-text="currentSummary || 'No cached data'"></strong>
+              </p>
+            </div>
+
+            <template x-if="forecastSummary.length">
+              <ul class="forecast-list">
+                <template x-for="item in forecastSummary" :key="item">
+                  <li x-text="item"></li>
+                </template>
+              </ul>
             </template>
-          </select>
-        </template>
-        <template x-if="regionResults.length">
-          <button
-            type="button"
-            class="secondary"
-            @click="applySelectedRegion()"
-            x-bind:disabled="loading || !weatherEnabled || !selectedRegionResult"
-            style="margin-top: 0.5em"
-          >
-            Apply Selected Result
-          </button>
-        </template>
+          </article>
+        </div>
 
-        <label for="weather-latitude">Latitude</label>
-        <input
-          id="weather-latitude"
-          type="number"
-          step="0.000001"
-          x-model="latitude"
-          x-bind:disabled="loading || !weatherEnabled"
-          placeholder="37.566"
-        />
-
-        <label for="weather-longitude">Longitude</label>
-        <input
-          id="weather-longitude"
-          type="number"
-          step="0.000001"
-          x-model="longitude"
-          x-bind:disabled="loading || !weatherEnabled"
-          placeholder="126.9784"
-        />
-
-        <label for="weather-timezone">Weather Timezone</label>
-        <input
-          id="weather-timezone"
-          type="text"
-          x-model="timezone"
-          x-bind:disabled="loading || !weatherEnabled"
-          placeholder="Asia/Seoul"
-        />
-        <small>Examples: <code>Asia/Seoul</code>, <code>Asia/Tokyo</code>, <code>UTC</code>, or <code>auto</code>.</small>
-
-        <div
-          style="margin-top: 0.5em; display: flex; gap: 0.5em; flex-wrap: wrap"
-        >
+        <div class="sticky-actions">
           <button
             type="button"
             class="primary"
@@ -141,28 +220,14 @@
           </button>
           <button
             type="button"
+            class="secondary"
             @click="fetchSettings()"
             x-bind:disabled="loading"
           >
-            Refresh
+            Refresh From Device
           </button>
+          <p x-text="statusMsg"></p>
         </div>
-
-        <p x-text="statusMsg"></p>
-
-        <article>
-          <header>Cached Weather</header>
-          <p><strong>Status:</strong> <span x-text="weatherStatus"></span></p>
-          <p><strong>Timezone:</strong> <span x-text="weatherTimezone"></span></p>
-          <p><strong>Current:</strong> <span x-text="currentSummary"></span></p>
-          <template x-if="forecastSummary.length">
-            <ul>
-              <template x-for="item in forecastSummary" :key="item">
-                <li x-text="item"></li>
-              </template>
-            </ul>
-          </template>
-        </article>
       </section>
 
       <footer id="footer-placeholder"></footer>

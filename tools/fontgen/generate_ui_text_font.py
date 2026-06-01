@@ -52,7 +52,7 @@ UI_STRINGS = [
     "시간",
     "시간 동기화 대기 중",
     "와이파이 연결 후 NTP 동기화",
-    "GeekMagic 오픈 펌웨어",
+    "SmallTV-Ultra Korean Custom Firmware",
     "오존",
     "PM",
     "IP",

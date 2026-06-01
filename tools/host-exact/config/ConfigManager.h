@@ -30,9 +30,15 @@ class ConfigManager {
     auto setClockUse24Hour(bool enabled) -> void { clock_use_24h = enabled; }
     auto isWeatherEnabled() const -> bool { return weather_enabled; }
     auto setWeatherEnabled(bool enabled) -> void { weather_enabled = enabled; }
+    auto getWeatherLatitude() const -> float { return weather_latitude; }
+    auto getWeatherLongitude() const -> float { return weather_longitude; }
+    auto getWeatherKmaGridX() const -> int { return weather_kma_grid_x; }
+    auto getWeatherKmaGridY() const -> int { return weather_kma_grid_y; }
     auto getWeatherLocationName() const -> const char* { return weather_location_name.c_str(); }
     auto getWeatherTimezone() const -> const char* { return weather_timezone.c_str(); }
     auto setWeatherTimezone(const char* value) -> void { weather_timezone = value == nullptr ? "" : value; }
+    auto getWeatherKmaApiKey() const -> const char* { return weather_kma_api_key.c_str(); }
+    auto setWeatherKmaApiKey(const char* value) -> void { weather_kma_api_key = value == nullptr ? "" : value; }
     auto getTimezoneRegion() const -> const char* { return timezone_region.c_str(); }
     auto setTimezoneRegion(const char* value) -> void { timezone_region = value == nullptr ? "" : value; }
 
@@ -40,7 +46,12 @@ class ConfigManager {
     bool clock_enabled = true;
     bool clock_use_24h = true;
     bool weather_enabled = true;
-    String weather_location_name = "서울특별시";
+    float weather_latitude = 37.566F;
+    float weather_longitude = 126.9784F;
+    int weather_kma_grid_x = 60;
+    int weather_kma_grid_y = 127;
+    String weather_location_name = "서울시";
     String weather_timezone = "Asia/Seoul";
+    String weather_kma_api_key;
     String timezone_region = "Asia/Seoul";
 };

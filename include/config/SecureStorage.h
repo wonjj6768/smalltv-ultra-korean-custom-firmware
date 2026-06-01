@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 /*
- * GeekMagic Open Firmware
+ * SmallTV-Ultra Korean Custom Firmware
  * Copyright (C) 2026 Times-Z
  *
  * This program is free software: you can redistribute it and/or modify
@@ -29,6 +29,7 @@ class SecureStorage {
     bool begin();
     bool put(const char* key, const char* value);
     bool remove(const char* key);
+    bool clear();
     String get(const char* key, const char* defaultValue = nullptr);
 
     // Set the public salt (should be called before begin())

@@ -6,28 +6,26 @@ function clockHandler() {
     weatherEnabled: false,
     latitude: 37.566,
     longitude: 126.9784,
+    kmaGridX: 60,
+    kmaGridY: 127,
     timezone: "Asia/Seoul",
-    locationName: "서울특별시",
+    locationName: "서울시",
+    kmaApiKey: "",
+    kmaKeyStatus: "",
     regionResults: [],
     selectedRegionResult: "",
     regionStatus: "",
+    kmaRegions: [],
     statusMsg: "",
     weatherStatus: "",
+    weatherSource: "",
     weatherTimezone: "",
     currentSummary: "",
     forecastSummary: [],
 
-    formatForecastHour(timestamp, timezone) {
+    formatForecastHour(timestamp) {
       const date = new Date((timestamp || 0) * 1000);
-      try {
-        return new Intl.DateTimeFormat([], {
-          hour: "2-digit",
-          hour12: false,
-          timeZone: timezone === "auto" ? undefined : timezone,
-        }).format(date);
-      } catch (_err) {
-        return date.toISOString().slice(11, 13);
-      }
+      return String(date.getUTCHours()).padStart(2, "0");
     },
 
     async fetchClockConfig() {
@@ -43,35 +41,52 @@ function clockHandler() {
       this.weatherEnabled = !!data.enabled;
       this.latitude = Number(data.latitude || 0);
       this.longitude = Number(data.longitude || 0);
+      this.kmaGridX = Number(data.kma_grid_x || 60);
+      this.kmaGridY = Number(data.kma_grid_y || 127);
       this.timezone = data.timezone || "Asia/Seoul";
-      this.locationName = this.toCityLevelLabel(data.location_name || "");
+      this.locationName = this.normalizeRegionLabel(data.location_name || "");
+      this.kmaApiKey = "";
+      this.kmaKeyStatus = data.kma_api_key_set
+        ? "KMA APIHub key is saved."
+        : "Required for KMA APIHub weather.";
     },
 
     normalizeRegionLabel(label) {
       return (label || "").replace(/\s+/g, " ").trim();
     },
 
+    compactRegionLabel(label) {
+      return this.normalizeRegionLabel(label)
+        .replace(/특별자치시/g, "시")
+        .replace(/특별시/g, "시")
+        .replace(/광역시/g, "시")
+        .replace(/특별자치도/g, "도");
+    },
+
     toCityLevelLabel(label) {
-      const normalized = this.normalizeRegionLabel(label);
+      const normalized = this.compactRegionLabel(label);
       if (!normalized) {
         return "";
       }
 
       const parts = normalized.split(" ").filter(Boolean);
-      const cityLike = parts.find((part) => /(?:시|구|군)$/.test(part));
-      return cityLike || parts[parts.length - 1] || normalized;
+      const filtered = parts.filter(
+        (part) => !/(?:특별시|광역시|특별자치시|특별자치도|도)$/.test(part),
+      );
+      const sigungu = [];
+      for (const part of filtered) {
+        if (/(?:시|군|구)$/.test(part)) {
+          sigungu.push(part);
+          if (sigungu.length >= 2 || /(?:군|구)$/.test(part)) {
+            break;
+          }
+        }
+      }
+      return sigungu.join(" ") || filtered[0] || parts[parts.length - 1] || normalized;
     },
 
-    scoreGeocodingResult(result, label) {
-      const haystack = [
-        result.name,
-        result.admin1,
-        result.admin2,
-        result.admin3,
-        result.admin4,
-      ]
-        .filter(Boolean)
-        .join(" ");
+    scoreRegionResult(result, label) {
+      const haystack = [result.label, result.full].filter(Boolean).join(" ");
       const normalizedHaystack = this.normalizeRegionLabel(haystack);
       const tokens = this.normalizeRegionLabel(label)
         .split(" ")
@@ -82,51 +97,70 @@ function clockHandler() {
       );
     },
 
-    buildRegionLabel(result) {
-      const admin1 = this.normalizeRegionLabel(result.admin1 || "");
-      const admin2 = this.normalizeRegionLabel(result.admin2 || "");
-      const name = this.normalizeRegionLabel(result.name || "");
-
-      if (admin2) {
-        return admin2;
-      }
-
-      if (name) {
-        return name;
-      }
-
-      return admin1;
+    regionMatches(result, label) {
+      const normalizedLabel = this.normalizeRegionLabel(label);
+      const full = this.normalizeRegionLabel(result.full);
+      const shortLabel = this.normalizeRegionLabel(result.label);
+      return (
+        full === normalizedLabel ||
+        shortLabel === normalizedLabel ||
+        full.includes(normalizedLabel) ||
+        shortLabel.includes(normalizedLabel)
+      );
     },
 
-    async geocodeRegion(query, label) {
-      const params = new URLSearchParams({
-        name: query,
-        count: "20",
-        language: "ko",
-        format: "json",
-        countryCode: "KR",
-      });
-      const response = await fetch(
-        `https://geocoding-api.open-meteo.com/v1/search?${params.toString()}`,
-      );
+    applyRegionData(region) {
+      this.locationName = this.toCityLevelLabel(region.label || region.full || this.locationName);
+      this.latitude = Number(region.latitude || region.lat || 0);
+      this.longitude = Number(region.longitude || region.lon || 0);
+      this.kmaGridX = Number(region.x || 0);
+      this.kmaGridY = Number(region.y || 0);
+      this.timezone = region.timezone || "Asia/Seoul";
+    },
+
+    async syncTypedRegion() {
+      const label = this.normalizeRegionLabel(this.locationName);
+      if (!label) {
+        return;
+      }
+
+      const regions = await this.loadKmaRegions();
+      const matches = regions
+        .map((region) => ({
+          ...region,
+          score: this.scoreRegionResult(region, label),
+        }))
+        .filter((region) => this.regionMatches(region, label) || region.score > 0)
+        .sort((left, right) => {
+          const leftExact =
+            this.normalizeRegionLabel(left.full) === label ||
+            this.normalizeRegionLabel(left.label) === label;
+          const rightExact =
+            this.normalizeRegionLabel(right.full) === label ||
+            this.normalizeRegionLabel(right.label) === label;
+          if (leftExact !== rightExact) {
+            return leftExact ? -1 : 1;
+          }
+          return right.score - left.score;
+        });
+
+      if (matches.length) {
+        this.applyRegionData(matches[0]);
+        this.regionStatus = `Applied ${matches[0].full}`;
+      }
+    },
+
+    async loadKmaRegions() {
+      if (this.kmaRegions.length) {
+        return this.kmaRegions;
+      }
+      const response = await fetch("./kma_regions.json?v=20260601b");
       if (!response.ok) {
         throw new Error("region lookup failed");
       }
       const data = await response.json();
-      const results = Array.isArray(data.results) ? data.results : [];
-      if (!results.length) {
-        return [];
-      }
-      return results
-        .map((result) => ({
-          label: this.buildRegionLabel(result),
-          latitude: Number(result.latitude || 0),
-          longitude: Number(result.longitude || 0),
-          timezone: result.timezone || "Asia/Seoul",
-          score: this.scoreGeocodingResult(result, label),
-        }))
-        .sort((left, right) => right.score - left.score)
-        .slice(0, 12);
+      this.kmaRegions = Array.isArray(data) ? data : [];
+      return this.kmaRegions;
     },
 
     async searchRegions() {
@@ -139,29 +173,28 @@ function clockHandler() {
       this.loading = true;
       this.regionStatus = "Searching regions...";
       try {
-        const parts = label.split(" ").filter(Boolean);
-        const queries = [label];
-        if (parts.length >= 2) {
-          queries.push(parts.slice(-2).join(" "));
-        }
-        if (parts.length >= 1) {
-          queries.push(parts[parts.length - 1]);
-        }
-
-        let matches = [];
-        for (const query of queries) {
-          matches = await this.geocodeRegion(query, label);
-          if (matches.length) {
-            break;
-          }
-        }
+        const regions = await this.loadKmaRegions();
+        const matches = regions
+          .map((result) => ({
+            ...result,
+            latitude: Number(result.lat || 0),
+            longitude: Number(result.lon || 0),
+            timezone: "Asia/Seoul",
+            score: this.scoreRegionResult(result, label),
+          }))
+          .filter(
+            (result) =>
+              result.score > 0 || this.regionMatches(result, label),
+          )
+          .sort((left, right) => right.score - left.score)
+          .slice(0, 12);
 
         if (!matches.length) {
-          throw new Error("No matching Korean region found");
+          throw new Error("No matching KMA region found");
         }
 
         this.regionResults = matches;
-        this.selectedRegionResult = matches[0].label;
+        this.selectedRegionResult = matches[0].full;
         this.regionStatus = `Found ${matches.length} matching regions`;
       } catch (err) {
         this.regionResults = [];
@@ -175,23 +208,23 @@ function clockHandler() {
 
     applySelectedRegion() {
       const selected = this.regionResults.find(
-        (result) => result.label === this.selectedRegionResult,
+        (result) => result.full === this.selectedRegionResult,
       );
       if (!selected) {
         this.regionStatus = "Choose a search result first";
         return;
       }
-      this.locationName = this.toCityLevelLabel(selected.label);
-      this.latitude = selected.latitude;
-      this.longitude = selected.longitude;
-      this.timezone = selected.timezone || "Asia/Seoul";
+      this.loading = true;
+      this.applyRegionData(selected);
       this.regionStatus = `Applied ${this.locationName}`;
+      this.loading = false;
     },
 
     async fetchWeatherStatus() {
       const response = await apiFetch("/api/v1/weather/status");
       const data = await response.json();
       this.weatherStatus = data.status || "";
+      this.weatherSource = data.source || "KMA APIHub";
       this.weatherTimezone = data.timezone || this.timezone || "Asia/Seoul";
       if (!data.hasData) {
         this.currentSummary = "";
@@ -199,15 +232,21 @@ function clockHandler() {
         return;
       }
 
-      const raining = data.isRaining ? "Raining" : "Dry";
-      const mm = Number(data.currentPrecipitation || 0).toFixed(1);
-      this.currentSummary = `${data.currentTemperature}C / ${raining} / ${mm}mm`;
-      const tz = data.timezone || this.timezone || "UTC";
+      const precipitation = Number(data.currentPrecipitation || 0);
+      const humidity = Number(data.currentHumidity || 0).toFixed(0);
+      const rainSummary =
+        data.isRaining || precipitation > 0
+          ? `강수 ${precipitation.toFixed(1)}mm`
+          : "비 없음";
+      this.currentSummary = `${data.currentTemperature}℃ · ${rainSummary} · 습도 ${humidity}%`;
       this.forecastSummary = (data.forecast || []).map((entry) => {
-        const hour = this.formatForecastHour(entry.time, tz);
-        return `${hour}h ${entry.temperature}C ${Number(
-          entry.precipitation || 0,
-        ).toFixed(1)}mm`;
+        const hour = this.formatForecastHour(entry.time);
+        const forecastPrecipitation = Number(entry.precipitation || 0);
+        const secondary =
+          forecastPrecipitation > 0
+            ? `강수 ${forecastPrecipitation.toFixed(1)}mm`
+            : `습도 ${Number(entry.humidity || 0).toFixed(0)}%`;
+        return `${hour}시 ${entry.temperature}℃ · ${secondary}`;
       });
     },
 
@@ -242,6 +281,10 @@ function clockHandler() {
           throw new Error(clockData.message || "clock save failed");
         }
 
+        if (this.weatherEnabled) {
+          await this.syncTypedRegion();
+        }
+
         const weatherResponse = await apiFetch("/api/v1/weather/config", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -249,8 +292,13 @@ function clockHandler() {
             enabled: this.weatherEnabled,
             latitude: Number(this.latitude),
             longitude: Number(this.longitude),
+            kma_grid_x: Number(this.kmaGridX),
+            kma_grid_y: Number(this.kmaGridY),
             timezone: (this.timezone || "Asia/Seoul").trim(),
-            location_name: this.toCityLevelLabel(this.locationName),
+            location_name: this.normalizeRegionLabel(this.locationName),
+            ...(this.kmaApiKey.trim()
+              ? { kma_api_key: this.kmaApiKey.trim() }
+              : {}),
           }),
         });
         const weatherData = await weatherResponse.json();
@@ -263,10 +311,14 @@ function clockHandler() {
         this.weatherEnabled = !!weatherData.enabled;
         this.latitude = Number(weatherData.latitude || 0);
         this.longitude = Number(weatherData.longitude || 0);
+        this.kmaGridX = Number(weatherData.kma_grid_x || this.kmaGridX || 60);
+        this.kmaGridY = Number(weatherData.kma_grid_y || this.kmaGridY || 127);
         this.timezone = weatherData.timezone || "Asia/Seoul";
-        this.locationName = this.toCityLevelLabel(
-          weatherData.location_name || this.locationName,
-        );
+        this.kmaApiKey = "";
+        this.kmaKeyStatus = weatherData.kma_api_key_set
+          ? "KMA APIHub key is saved."
+          : "Required for KMA APIHub weather.";
+        this.locationName = this.normalizeRegionLabel(weatherData.location_name || this.locationName);
         this.statusMsg = "Dashboard settings updated";
         await this.fetchWeatherStatus();
       } catch (err) {

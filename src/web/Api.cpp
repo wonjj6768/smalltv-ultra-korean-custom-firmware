@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 /*
- * GeekMagic Open Firmware
+ * SmallTV-Ultra Korean Custom Firmware
  * Copyright (C) 2026 Times-Z
  *
  * This program is free software: you can redistribute it and/or modify
@@ -20,6 +20,7 @@
 #include <Arduino.h>
 #include <Logger.h>
 #include <ArduinoJson.h>
+#include <LittleFS.h>
 #include <Updater.h>
 
 #include "web/Webserver.h"
@@ -43,6 +44,7 @@ static volatile bool otaInProgress = false;
 static volatile bool otaCancelRequested = false;
 static size_t otaTotal = 0;
 static bool otaFsUnmounted = false;
+static int otaMode = U_FLASH;
 static unsigned long otaLastProgressDrawMs = 0;
 static int otaLastProgressPercent = -1;
 
@@ -215,6 +217,10 @@ void registerApiEndpoints(Webserver* webserver) {
     // @openapi {post} /reboot version=v1 group=System summary="Reboot the device" requiresAuth=true
     // responses=200:application/json,401:application/json
     webserver->raw().on("/api/v1/reboot", HTTP_POST, [webserver]() { handleReboot(webserver); });
+
+    // @openapi {post} /factory-reset version=v1 group=System summary="Reset user settings and reboot" requiresAuth=true
+    // responses=200:application/json,401:application/json
+    webserver->raw().on("/api/v1/factory-reset", HTTP_POST, [webserver]() { handleFactoryReset(webserver); });
 
     // @openapi {post} /ota/fw version=v1 group=OTA summary="Upload firmware (OTA)" requiresAuth=true
     // requestBody=multipart/form-data responses=200:application/json,401:application/json
@@ -622,6 +628,38 @@ void handleReboot(Webserver* webserver) {
     ESP.restart();  // NOLINT(readability-static-accessed-through-instance)
 }
 
+void handleFactoryReset(Webserver* webserver) {
+    if (!requireBearerToken(webserver)) {
+        return;
+    }
+
+    const bool configRemoved = !LittleFS.exists(configManager.filename.c_str()) ||
+                               LittleFS.remove(configManager.filename.c_str());
+    const bool secureCleared = configManager.secure.clear();
+
+    JsonDocument doc;
+    doc["status"] = "resetting";
+    doc["configRemoved"] = configRemoved;
+    doc["secureStorageCleared"] = secureCleared;
+    doc["message"] = "User settings cleared. Device will reboot into setup mode.";
+
+    String json;
+    serializeJson(doc, json);
+
+    setCorsHeaders(webserver);
+    webserver->raw().send(HTTP_CODE_OK, "application/json", json);
+
+    DisplayManager::pauseClock(3000);
+    DisplayManager::clearScreen();
+    DisplayManager::drawTextWrapped(20, 80, F("Factory reset..."), 2, LCD_WHITE, LCD_BLACK, true);
+
+    delay(1000);
+    WiFi.disconnect(true);
+    ESP.eraseConfig();  // NOLINT(readability-static-accessed-through-instance)
+    delay(300);
+    ESP.restart();  // NOLINT(readability-static-accessed-through-instance)
+}
+
 /**
  * @brief Manual NTP sync trigger endpoint
  */
@@ -783,31 +821,25 @@ void handleNtpConfigSet(Webserver* webserver) {
         return;
     }
 
-    bool syncAttempted = false;
-    bool syncOk = false;
-    if (ntpClient != nullptr) {
-        ntpClient->applyConfiguration();
-        syncAttempted = true;
-        syncOk = ntpClient->syncNow();
-    }
-
-    DisplayManager::pauseClock(0);
-    DisplayManager::drawClock();
-
     JsonDocument doc;
     doc["status"] = "ok";
     doc["ntp_server"] = configManager.getNtpServer();
     doc["timezone_region"] = configManager.getTimezoneRegion();
     doc["timezone_offset_minutes"] = configManager.getTimezoneOffsetMinutes();
-    doc["sync_attempted"] = syncAttempted;
-    doc["sync_ok"] = syncOk;
-    doc["message"] = syncAttempted ? (syncOk ? "Config saved and clock refreshed" : "Config saved, clock refreshed")
-                                   : "Config saved";
+    doc["message"] = "Config saved";
     String json;
     serializeJson(doc, json);
 
     setCorsHeaders(webserver);
     webserver->raw().send(HTTP_CODE_OK, "application/json", json);
+
+    if (ntpClient != nullptr) {
+        ntpClient->applyConfiguration();
+        ntpClient->syncNow();
+    }
+
+    DisplayManager::pauseClock(0);
+    DisplayManager::drawClock();
 }
 
 /**
@@ -889,14 +921,6 @@ void handleDisplayRotationSet(Webserver* webserver) {
 
     auto newRotation = static_cast<uint8_t>(rotation);
     configManager.setLCDRotation(newRotation);
-    String currentIP = "unknown";
-
-    if (wifiManager != nullptr) {
-        currentIP = wifiManager->getIP().toString();
-    }
-
-    DisplayManager::setRotation(newRotation, currentIP);
-
     if (!configManager.save()) {
         JsonDocument doc;
         doc["status"] = "error";
@@ -921,6 +945,12 @@ void handleDisplayRotationSet(Webserver* webserver) {
     setCorsHeaders(webserver);
     webserver->raw().send(HTTP_CODE_OK, "application/json", json);
 
+    String currentIP = "unknown";
+    if (wifiManager != nullptr) {
+        currentIP = wifiManager->getIP().toString();
+    }
+    DisplayManager::setRotation(newRotation, currentIP);
+
     Logger::info(("Display rotation updated to " + String(newRotation)).c_str(), "API");
 }
 
@@ -933,8 +963,11 @@ void handleWeatherConfigGet(Webserver* webserver) {
     doc["enabled"] = configManager.isWeatherEnabled();
     doc["latitude"] = configManager.getWeatherLatitude();
     doc["longitude"] = configManager.getWeatherLongitude();
+    doc["kma_grid_x"] = configManager.getWeatherKmaGridX();
+    doc["kma_grid_y"] = configManager.getWeatherKmaGridY();
     doc["timezone"] = configManager.getWeatherTimezone();
     doc["location_name"] = configManager.getWeatherLocationName();
+    doc["kma_api_key_set"] = strlen(configManager.getWeatherKmaApiKey()) > 0;
 
     String json;
     serializeJson(doc, json);
@@ -981,6 +1014,8 @@ void handleWeatherConfigSet(Webserver* webserver) {
     const bool enabled = ddoc["enabled"] | configManager.isWeatherEnabled();
     const float latitude = ddoc["latitude"] | configManager.getWeatherLatitude();
     const float longitude = ddoc["longitude"] | configManager.getWeatherLongitude();
+    const int kmaGridX = ddoc["kma_grid_x"] | configManager.getWeatherKmaGridX();
+    const int kmaGridY = ddoc["kma_grid_y"] | configManager.getWeatherKmaGridY();
     const char* timezone = ddoc["timezone"] | configManager.getWeatherTimezone();
     const char* locationName = ddoc["location_name"] | configManager.getWeatherLocationName();
 
@@ -1002,8 +1037,13 @@ void handleWeatherConfigSet(Webserver* webserver) {
     configManager.setWeatherEnabled(enabled);
     configManager.setWeatherLatitude(latitude);
     configManager.setWeatherLongitude(longitude);
+    configManager.setWeatherKmaGridX(kmaGridX);
+    configManager.setWeatherKmaGridY(kmaGridY);
     configManager.setWeatherTimezone(timezone);
     configManager.setWeatherLocationName(locationName);
+    if (ddoc["kma_api_key"].is<const char*>()) {
+        configManager.setWeatherKmaApiKey(ddoc["kma_api_key"] | "");
+    }
 
     if (!configManager.save()) {
         JsonDocument doc;
@@ -1018,28 +1058,31 @@ void handleWeatherConfigSet(Webserver* webserver) {
         return;
     }
 
-    if (weatherClient != nullptr && enabled) {
-        weatherClient->refreshNow();
-    }
-
-    if (configManager.isClockEnabled() || configManager.isWeatherEnabled()) {
-        DisplayManager::pauseClock(250);
-        DisplayManager::drawClock();
-    }
-
     JsonDocument doc;
     doc["status"] = "ok";
     doc["enabled"] = configManager.isWeatherEnabled();
     doc["latitude"] = configManager.getWeatherLatitude();
     doc["longitude"] = configManager.getWeatherLongitude();
+    doc["kma_grid_x"] = configManager.getWeatherKmaGridX();
+    doc["kma_grid_y"] = configManager.getWeatherKmaGridY();
     doc["timezone"] = configManager.getWeatherTimezone();
     doc["location_name"] = configManager.getWeatherLocationName();
+    doc["kma_api_key_set"] = strlen(configManager.getWeatherKmaApiKey()) > 0;
 
     String json;
     serializeJson(doc, json);
 
     setCorsHeaders(webserver);
     webserver->raw().send(HTTP_CODE_OK, "application/json", json);
+
+    if (weatherClient != nullptr && enabled) {
+        weatherClient->requestRefresh(10000UL);
+    }
+
+    if (configManager.isClockEnabled() || configManager.isWeatherEnabled()) {
+        DisplayManager::pauseClock(250);
+        DisplayManager::drawClock();
+    }
 }
 
 void handleWeatherStatusGet(Webserver* webserver) {
@@ -1062,6 +1105,8 @@ void handleWeatherStatusGet(Webserver* webserver) {
     const auto& weather = weatherClient->getSnapshot();
     sendJsonContent(webserver, "{\"status\":");
     sendJsonEscapedString(webserver, weather.status);
+    sendJsonContent(webserver, ",\"source\":");
+    sendJsonEscapedString(webserver, weather.source);
     sendJsonContent(webserver, ",\"hasData\":");
     sendJsonContent(webserver, weather.hasData ? "true" : "false");
     sendJsonContent(webserver, ",\"fetching\":");
@@ -1082,6 +1127,8 @@ void handleWeatherStatusGet(Webserver* webserver) {
     sendJsonFloat(webserver, weather.currentPrecipitation);
     sendJsonContent(webserver, ",\"currentPrecipitationProbability\":");
     sendJsonFloat(webserver, weather.currentPrecipitationProbability);
+    sendJsonContent(webserver, ",\"currentHumidity\":");
+    sendJsonFloat(webserver, weather.currentHumidity);
     sendJsonContent(webserver, ",\"currentCloudCover\":");
     sendJsonFloat(webserver, weather.currentCloudCover);
     sendJsonContent(webserver, ",\"currentVisibility\":");
@@ -1118,6 +1165,8 @@ void handleWeatherStatusGet(Webserver* webserver) {
         sendJsonFloat(webserver, entry.precipitation);
         sendJsonContent(webserver, ",\"precipitationProbability\":");
         sendJsonFloat(webserver, entry.precipitationProbability);
+        sendJsonContent(webserver, ",\"humidity\":");
+        sendJsonFloat(webserver, entry.humidity);
         sendJsonContent(webserver, ",\"weatherCode\":");
         sendJsonInt(webserver, entry.weatherCode);
         sendJsonContent(webserver, "}");
@@ -1133,19 +1182,16 @@ void handleWeatherRefresh(Webserver* webserver) {
     }
 
     JsonDocument doc;
-    const bool ok = (weatherClient != nullptr) && weatherClient->refreshNow();
+    const bool ok = weatherClient != nullptr;
     doc["status"] = ok ? "ok" : "error";
 
     if (weatherClient != nullptr) {
+        weatherClient->requestRefresh();
         const auto weather = weatherClient->getSnapshot();
-        doc["message"] = weather.status;
+        doc["message"] = "refresh queued";
+        doc["previousStatus"] = weather.status;
     } else {
         doc["message"] = "weather client not initialized";
-    }
-
-    if (ok && (configManager.isClockEnabled() || configManager.isWeatherEnabled())) {
-        DisplayManager::pauseClock(250);
-        DisplayManager::drawClock();
     }
 
     String json;
@@ -1225,15 +1271,6 @@ void handleDisplayClockSet(Webserver* webserver) {
         return;
     }
 
-    if (configManager.isClockEnabled()) {
-        DisplayManager::pauseClock(250);
-        DisplayManager::drawClock();
-    } else {
-        const String currentIP = (wifiManager != nullptr) ? wifiManager->getIP().toString() : String("N/A");
-        DisplayManager::pauseClock(5000);
-        DisplayManager::drawStartup(currentIP);
-    }
-
     JsonDocument doc;
     doc["status"] = "ok";
     doc["enabled"] = configManager.isClockEnabled();
@@ -1245,6 +1282,15 @@ void handleDisplayClockSet(Webserver* webserver) {
 
     setCorsHeaders(webserver);
     webserver->raw().send(HTTP_CODE_OK, "application/json", json);
+
+    if (configManager.isClockEnabled()) {
+        DisplayManager::pauseClock(250);
+        DisplayManager::drawClock();
+    } else {
+        const String currentIP = (wifiManager != nullptr) ? wifiManager->getIP().toString() : String("N/A");
+        DisplayManager::pauseClock(5000);
+        DisplayManager::drawStartup(currentIP);
+    }
 
     Logger::info("Display clock settings updated", "API");
 }
@@ -1356,6 +1402,9 @@ void handleOtaFinished(Webserver* webserver) {
     webserver->raw().send(HTTP_CODE_OK, "application/json", json);
 
     if (!otaError) {
+        if (otaMode == U_FS) {
+            configManager.save();
+        }
         delay(rebootDelayMs);
         ESP.restart();  // NOLINT(readability-static-accessed-through-instance)
     }
@@ -1696,6 +1745,7 @@ static void otaHandleStart(HTTPUpload& upload, int mode) {
     otaStatus = "";
     otaInProgress = true;
     otaCancelRequested = false;
+    otaMode = mode;
     otaTotal = static_cast<size_t>(upload.contentLength);
     otaLastProgressDrawMs = 0;
     otaLastProgressPercent = -1;

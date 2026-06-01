@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 /*
- * GeekMagic Open Firmware
+ * SmallTV-Ultra Korean Custom Firmware
  * Copyright (C) 2026 Times-Z
  *
  * This program is free software: you can redistribute it and/or modify
@@ -29,17 +29,13 @@ extern ConfigManager configManager;
 static constexpr int LOADING_BAR_TEXT_X = 20;
 static constexpr int LOADING_BAR_TEXT_Y = 60;
 static constexpr int LOADING_BAR_Y = 110;
-static constexpr int LOADING_DELAY_MS = 1000;
-
-/**
- * @brief Maximum number of attempts to connect to a wifi network
- */
-static constexpr int MAX_CONNECTION_ATTEMPTS = 20;
 
 /**
  * @brief Delay in milliseconds between wifi connection attempts
  */
-static constexpr uint32_t CONNECTION_DELAY_MS = 500;
+static constexpr uint32_t CONNECTION_TIMEOUT_MS = 10000;
+static constexpr uint32_t CONNECTION_POLL_MS = 100;
+static constexpr uint32_t LOADING_BAR_REDRAW_MS = 250;
 
 /**
  * @brief WifiManager constructor
@@ -71,13 +67,13 @@ auto WiFiManager::begin() -> void {
 auto WiFiManager::startStationMode() -> bool {
     WiFi.mode(WIFI_STA);
     WiFi.begin(_staSsid, _staPass);
-    int attempts = 0;
+    const unsigned long startMs = millis();
 
     Logger::info("Connecting to WiFi...", "WiFiManager");
 
-    while (WiFi.status() != WL_CONNECTED && attempts < MAX_CONNECTION_ATTEMPTS) {
-        delay(CONNECTION_DELAY_MS);
-        attempts++;
+    while (WiFi.status() != WL_CONNECTED && millis() - startMs < CONNECTION_TIMEOUT_MS) {
+        DisplayManager::update();
+        delay(CONNECTION_POLL_MS);
     }
 
     if (WiFi.status() == WL_CONNECTED) {
@@ -122,10 +118,16 @@ auto WiFiManager::connectToNetwork(const char* ssid, const char* pass, uint32_t 
     WiFi.begin(ssid, pass);
 
     uint32_t start = millis();
+    uint32_t lastRedraw = 0;
 
     while (WiFi.status() != WL_CONNECTED && (millis() - start) < timeoutMs) {
-        delay(CONNECTION_DELAY_MS);
-        DisplayManager::drawLoadingBar(static_cast<float>(step) / static_cast<float>(total_steps), LOADING_BAR_Y);
+        const uint32_t now = millis();
+        if (now - lastRedraw >= LOADING_BAR_REDRAW_MS) {
+            const float elapsed = static_cast<float>(now - start) / static_cast<float>(timeoutMs);
+            DisplayManager::drawLoadingBar((elapsed > 1.0F ? 1.0F : elapsed) * 0.5F, LOADING_BAR_Y);
+            lastRedraw = now;
+        }
+        delay(CONNECTION_POLL_MS);
     }
 
     step++;

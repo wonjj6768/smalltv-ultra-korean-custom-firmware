@@ -13,6 +13,7 @@ class WeatherClient {
         float rain = 0.0F;
         float precipitation = 0.0F;
         float precipitationProbability = -1.0F;
+        float humidity = -1.0F;
         int weatherCode = -1;
     };
 
@@ -25,6 +26,7 @@ class WeatherClient {
         float currentRain = 0.0F;
         float currentPrecipitation = 0.0F;
         float currentPrecipitationProbability = -1.0F;
+        float currentHumidity = -1.0F;
         float currentCloudCover = 0.0F;
         float currentVisibility = 0.0F;
         float currentPm25 = 0.0F;
@@ -37,12 +39,14 @@ class WeatherClient {
         long utcOffsetSeconds = 0;
         String timezone;
         String status;
+        String source;
         std::array<ForecastEntry, 4> forecast{};
     };
 
     auto begin() -> void {}
     auto loop() -> void {}
     auto refreshNow() -> bool { return true; }
+    auto requestRefresh() -> void {}
     auto getSnapshot() const -> const Snapshot& { return snapshot_; }
     auto mutableSnapshot() -> Snapshot& { return snapshot_; }
     auto setSnapshot(const Snapshot& snapshot) -> void { snapshot_ = snapshot; }
