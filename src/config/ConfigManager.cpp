@@ -43,7 +43,25 @@ static auto normalizeWeatherLocationName(const String& value) -> String {
     normalized.replace("특별시", "시");
     normalized.replace("광역시", "시");
     normalized.replace("특별자치도", "도");
-    return normalized;
+
+    String displayName;
+    int start = 0;
+    while (start < static_cast<int>(normalized.length())) {
+        int space = normalized.indexOf(' ', start);
+        if (space < 0) {
+            space = normalized.length();
+        }
+
+        String part = normalized.substring(start, space);
+        part.trim();
+        if (part.length() > 0 && !part.endsWith("도")) {
+            displayName = part;
+        }
+
+        start = space + 1;
+    }
+
+    return displayName.length() > 0 ? displayName : normalized;
 }
 
 static auto timezoneRegionFromOffsetMinutes(int offsetMinutes) -> String {

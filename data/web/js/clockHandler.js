@@ -44,7 +44,7 @@ function clockHandler() {
       this.kmaGridX = Number(data.kma_grid_x || 60);
       this.kmaGridY = Number(data.kma_grid_y || 127);
       this.timezone = data.timezone || "Asia/Seoul";
-      this.locationName = this.normalizeRegionLabel(data.location_name || "");
+      this.locationName = this.toCityLevelLabel(data.location_name || "");
       this.kmaApiKey = "";
       this.kmaKeyStatus = data.kma_api_key_set
         ? "KMA APIHub key is saved."
@@ -73,16 +73,8 @@ function clockHandler() {
       const filtered = parts.filter(
         (part) => !/(?:특별시|광역시|특별자치시|특별자치도|도)$/.test(part),
       );
-      const sigungu = [];
-      for (const part of filtered) {
-        if (/(?:시|군|구)$/.test(part)) {
-          sigungu.push(part);
-          if (sigungu.length >= 2 || /(?:군|구)$/.test(part)) {
-            break;
-          }
-        }
-      }
-      return sigungu.join(" ") || filtered[0] || parts[parts.length - 1] || normalized;
+      const meaningful = filtered.filter((part) => !/(?:도)$/.test(part));
+      return meaningful[meaningful.length - 1] || filtered[filtered.length - 1] || parts[parts.length - 1] || normalized;
     },
 
     scoreRegionResult(result, label) {
@@ -295,7 +287,7 @@ function clockHandler() {
             kma_grid_x: Number(this.kmaGridX),
             kma_grid_y: Number(this.kmaGridY),
             timezone: (this.timezone || "Asia/Seoul").trim(),
-            location_name: this.normalizeRegionLabel(this.locationName),
+            location_name: this.toCityLevelLabel(this.locationName),
             ...(this.kmaApiKey.trim()
               ? { kma_api_key: this.kmaApiKey.trim() }
               : {}),
@@ -318,7 +310,7 @@ function clockHandler() {
         this.kmaKeyStatus = weatherData.kma_api_key_set
           ? "KMA APIHub key is saved."
           : "Required for KMA APIHub weather.";
-        this.locationName = this.normalizeRegionLabel(weatherData.location_name || this.locationName);
+        this.locationName = this.toCityLevelLabel(weatherData.location_name || this.locationName);
         this.statusMsg = "Dashboard settings updated";
         await this.fetchWeatherStatus();
       } catch (err) {

@@ -8,6 +8,7 @@
 
 #include <cmath>
 #include <cstdio>
+#include <cstring>
 
 namespace ClockDashboard {
 
@@ -200,6 +201,56 @@ static void deriveLocationFromTimezone(const std::string& timezone, std::string&
     city = replaceAll(timezone.substr(slashPos + 1), '_', ' ');
 }
 
+static auto compactLocationName(std::string locationName) -> std::string {
+    if (locationName.empty()) {
+        return locationName;
+    }
+
+    const std::pair<const char*, const char*> replacements[] = {
+        {"특별자치시", "시"},
+        {"특별시", "시"},
+        {"광역시", "시"},
+        {"특별자치도", "도"},
+    };
+
+    for (const auto& replacement : replacements) {
+        std::size_t pos = 0;
+        while ((pos = locationName.find(replacement.first, pos)) != std::string::npos) {
+            locationName.replace(pos, std::strlen(replacement.first), replacement.second);
+            pos += std::strlen(replacement.second);
+        }
+    }
+
+    std::string displayName;
+    std::size_t start = 0;
+    while (start < locationName.size()) {
+        const std::size_t space = locationName.find(' ', start);
+        const std::size_t end = space == std::string::npos ? locationName.size() : space;
+        std::string part = locationName.substr(start, end - start);
+
+        while (!part.empty() && part.front() == ' ') {
+            part.erase(part.begin());
+        }
+        while (!part.empty() && part.back() == ' ') {
+            part.pop_back();
+        }
+
+        if (!part.empty()) {
+            const bool provinceToken = part.size() >= std::strlen("도") && part.rfind("도") == part.size() - std::strlen("도");
+            if (!provinceToken) {
+                displayName = part;
+            }
+        }
+
+        if (space == std::string::npos) {
+            break;
+        }
+        start = space + 1;
+    }
+
+    return displayName.empty() ? locationName : displayName;
+}
+
 auto weatherIconSlot(int weatherCode) -> const char* {
     switch (weatherCode) {
         case 0:
@@ -273,7 +324,7 @@ auto buildScene(const Input& input) -> Scene {
     }
 
     if (!input.weather.locationName.empty()) {
-        scene.locationName = input.weather.locationName;
+        scene.locationName = compactLocationName(input.weather.locationName);
     }
     if (scene.locationName.empty()) {
         std::string derivedLocation;
