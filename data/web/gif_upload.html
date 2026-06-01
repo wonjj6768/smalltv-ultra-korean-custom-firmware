@@ -3,14 +3,14 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Upload GIF</title>
-    <link rel="stylesheet" href="./css/pico.min.css?v=20260601" />
-    <link rel="stylesheet" href="./css/style.css?v=20260601" />
-    <script src="./js/alpinejs.min.js?v=20260601" defer></script>
-    <script src="./js/utils.js?v=20260601"></script>
-    <script src="./js/themeSwitcher.js?v=20260601"></script>
-    <script src="./js/gifUploadHandler.js?v=20260601"></script>
-    <script src="./js/main.js?v=20260601"></script>
+    <title>GIF Upload - In Development</title>
+    <link rel="stylesheet" href="./css/pico.min.css?v=20260602" />
+    <link rel="stylesheet" href="./css/style.css?v=20260602" />
+    <script src="./js/alpinejs.min.js?v=20260602" defer></script>
+    <script src="./js/utils.js?v=20260602"></script>
+    <script src="./js/themeSwitcher.js?v=20260602"></script>
+    <script src="./js/gifUploadHandler.js?v=20260602"></script>
+    <script src="./js/main.js?v=20260602"></script>
   </head>
   <body>
     <main class="container">
@@ -19,7 +19,12 @@
       <a href="./index.html" style="margin-left: 2em">← Back to Home</a>
       <section>
         <div x-data="gifUploadHandler()" style="margin-top: 2em">
-          <h2>Upload GIF</h2>
+          <h2>GIF Upload</h2>
+          <article>
+            <strong>In development.</strong>
+            GIF upload/playback code is kept in the firmware, but this feature is
+            not ready for normal use yet.
+          </article>
           <form @submit.prevent="uploadGif">
             <input type="file" x-ref="fileInput" required accept="image/gif" />
             <button type="submit" x-bind:disabled="uploading">Upload</button>

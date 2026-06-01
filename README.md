@@ -19,7 +19,8 @@ Based on / 원본 기반: [Times-Z/GeekMagic-Open-Firmware](https://github.com/T
 - Korean clock and weather dashboard tuned for SmallTV-Ultra / SmallTV-Ultra 화면에 맞춘 한국어 시계/날씨 대시보드
 - KMA APIHub weather support with Korean region lookup / 기상청 APIHub 기반 날씨와 한국 지역 검색 설정
 - Hourly forecast row with temperature, precipitation amount, and humidity / 시간별 예보에 온도, 강수량, 습도 표시
-- Local web UI for Wi-Fi, time, weather, update, GIF, logs, and reset / 와이파이, 시간, 날씨, 업데이트, GIF, 로그, 초기화를 위한 로컬 웹 UI
+- Local web UI for Wi-Fi, time, weather, update, logs, and reset / 와이파이, 시간, 날씨, 업데이트, 로그, 초기화를 위한 로컬 웹 UI
+- GIF upload/playback code is kept, but the feature is still in development / GIF 업로드/재생 코드는 남겨두었지만 기능은 아직 개발중입니다
 
 ## Supported Device / 지원 기기
 
