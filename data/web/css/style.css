@@ -5,12 +5,16 @@
   --ui-border: #ddd;
   --ui-text: #111;
   --ui-muted: #666;
-  --pico-primary: #111;
-  --pico-primary-background: #111;
-  --pico-primary-border: #111;
-  --pico-primary-hover: #000;
-  --pico-primary-hover-background: #000;
-  --pico-primary-hover-border: #000;
+  --ui-action: #0b63ce;
+  --ui-action-soft: #eef5ff;
+  --ui-action-border: #9fc5ff;
+  --ui-danger: #b3261e;
+  --pico-primary: #0b63ce;
+  --pico-primary-background: #0b63ce;
+  --pico-primary-border: #0b63ce;
+  --pico-primary-hover: #084a9b;
+  --pico-primary-hover-background: #084a9b;
+  --pico-primary-hover-border: #084a9b;
   --pico-secondary: #555;
   --pico-secondary-background: #555;
   --pico-secondary-border: #555;
@@ -20,12 +24,12 @@
   --pico-contrast: #111;
   --pico-contrast-background: #111;
   --pico-contrast-border: #111;
-  --pico-form-element-active-border-color: #777;
-  --pico-form-element-focus-color: #777;
-  --pico-switch-checked-background-color: #111;
-  --pico-range-thumb-color: #111;
-  --pico-range-thumb-active-color: #000;
-  --pico-progress-color: #111;
+  --pico-form-element-active-border-color: #0b63ce;
+  --pico-form-element-focus-color: #0b63ce;
+  --pico-switch-checked-background-color: #0b63ce;
+  --pico-range-thumb-color: #0b63ce;
+  --pico-range-thumb-active-color: #084a9b;
+  --pico-progress-color: #0b63ce;
 }
 
 html,
@@ -69,12 +73,12 @@ footer {
 }
 
 a {
-  color: inherit;
+  color: var(--ui-action);
 }
 
 .back-link {
   margin: 0;
-  color: var(--ui-muted);
+  color: var(--ui-action);
   text-decoration: none;
 }
 
@@ -237,13 +241,14 @@ a {
 
 .nav-card {
   display: block;
+  border-color: var(--ui-action-border);
   color: inherit;
   text-decoration: none;
 }
 
 .nav-card span {
   display: block;
-  color: var(--ui-muted);
+  color: var(--ui-action);
   font-weight: 700;
 }
 
@@ -251,6 +256,11 @@ a {
   display: block;
   margin-top: 0.15rem;
   font-size: 0.95rem;
+}
+
+.nav-card:hover,
+.nav-card:focus {
+  background: var(--ui-action-soft);
 }
 
 .wifi-table {
@@ -331,7 +341,7 @@ a {
 }
 
 .danger-action {
-  color: inherit;
+  color: var(--ui-danger);
 }
 
 @media (max-width: 760px) {
