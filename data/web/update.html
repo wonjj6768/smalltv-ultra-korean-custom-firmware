@@ -4,24 +4,91 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Firmware / FS Update</title>
-    <link rel="stylesheet" href="./css/pico.min.css?v=20260602d" />
-    <link rel="stylesheet" href="./css/style.css?v=20260602d" />
-    <script src="./js/alpinejs.min.js?v=20260602d" defer></script>
-    <script src="./js/utils.js?v=20260602d"></script>
-    <script src="./js/otaUploadHandler.js?v=20260602d"></script>
-    <script src="./js/main.js?v=20260602d"></script>
+    <link rel="stylesheet" href="./css/pico.min.css?v=20260602e" />
+    <link rel="stylesheet" href="./css/style.css?v=20260602e" />
+    <script src="./js/alpinejs.min.js?v=20260602e" defer></script>
+    <script src="./js/utils.js?v=20260602e"></script>
+    <script src="./js/otaUploadHandler.js?v=20260602e"></script>
+    <script src="./js/main.js?v=20260602e"></script>
   </head>
   <body>
     <main class="container app-shell">
       <header id="header-placeholder"></header>
       <a href="./index.html" class="back-link">← Back to Home</a>
-      <section x-data="otaUploadHandler()" class="settings-page">
+      <section x-data="otaUploadHandler()" x-init="init()" class="settings-page">
         <div class="page-hero">
           <p class="eyebrow">Update</p>
           <h2>Firmware / LittleFS</h2>
-          <p>Upload only the release binaries built for SmallTV-Ultra.</p>
+          <p>Check GitHub releases, then apply firmware and LittleFS manually.</p>
         </div>
+
         <article class="setting-card">
+          <header class="card-heading">
+            <div>
+              <p class="eyebrow">Release Check</p>
+              <h3>Update Notification</h3>
+            </div>
+            <span
+              class="status-pill"
+              x-text="updateAvailable ? 'Update available' : 'No update'"
+            ></span>
+          </header>
+
+          <div class="metric-grid">
+            <div class="metric-card">
+              <span>Current</span>
+              <strong x-text="currentVersion || 'unknown'"></strong>
+            </div>
+            <div class="metric-card">
+              <span>Latest</span>
+              <strong x-text="latestVersion || 'unknown'"></strong>
+            </div>
+          </div>
+
+          <p x-text="updateMessage"></p>
+
+          <div class="action-row">
+            <button
+              type="button"
+              @click="checkLatestRelease()"
+              x-bind:disabled="checking || uploading"
+            >
+              Check Update
+            </button>
+            <button
+              type="button"
+              class="primary"
+              @click="applyReleaseAsset('firmware')"
+              x-bind:disabled="uploading || !latestAssets.firmware"
+            >
+              Apply Firmware
+            </button>
+            <button
+              type="button"
+              class="primary"
+              @click="applyReleaseAsset('fs')"
+              x-bind:disabled="uploading || !latestAssets.fs"
+            >
+              Apply LittleFS
+            </button>
+            <a
+              x-show="latestUrl"
+              x-bind:href="latestUrl"
+              target="_blank"
+              rel="noreferrer"
+            >
+              Open Release
+            </a>
+          </div>
+        </article>
+
+        <article class="setting-card">
+          <header class="card-heading">
+            <div>
+              <p class="eyebrow">Manual Upload</p>
+              <h3>Local .bin File</h3>
+            </div>
+          </header>
           <form @submit.prevent="uploadFile">
             <input type="file" x-ref="fileInput" required accept=".bin" />
             <select x-model="uploadType">

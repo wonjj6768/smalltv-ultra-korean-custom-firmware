@@ -28,6 +28,7 @@ void handleOtaUpload(Webserver* webserver, int mode);
 void handleOtaFinished(Webserver* webserver);
 void handleReboot(Webserver* webserver);
 void handleFactoryReset(Webserver* webserver);
+void handleSystemVersion(Webserver* webserver);
 void handleOtaStatus(Webserver* webserver);
 void handleOtaCancel(Webserver* webserver);
 

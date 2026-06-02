@@ -25,6 +25,7 @@
 
 #include "web/Webserver.h"
 #include "web/Api.h"
+#include "project_version.h"
 #include "display/DisplayManager.h"
 
 #include "config/ConfigManager.h"
@@ -226,6 +227,10 @@ void registerApiEndpoints(Webserver* webserver) {
     // @openapi {post} /factory-reset version=v1 group=System summary="Reset user settings and reboot" requiresAuth=true
     // responses=200:application/json,401:application/json
     webserver->raw().on("/api/v1/factory-reset", HTTP_POST, [webserver]() { handleFactoryReset(webserver); });
+
+    // @openapi {get} /system/version version=v1 group=System summary="Get firmware version" requiresAuth=true
+    // responses=200:application/json,401:application/json
+    webserver->raw().on("/api/v1/system/version", HTTP_GET, [webserver]() { handleSystemVersion(webserver); });
 
     // @openapi {post} /ota/fw version=v1 group=OTA summary="Upload firmware (OTA)" requiresAuth=true
     // requestBody=multipart/form-data responses=200:application/json,401:application/json
@@ -663,6 +668,24 @@ void handleFactoryReset(Webserver* webserver) {
     ESP.eraseConfig();  // NOLINT(readability-static-accessed-through-instance)
     delay(300);
     ESP.restart();  // NOLINT(readability-static-accessed-through-instance)
+}
+
+void handleSystemVersion(Webserver* webserver) {
+    if (!requireBearerToken(webserver)) {
+        return;
+    }
+
+    JsonDocument doc;
+    doc["version"] = PROJECT_VER_STR;
+    doc["repo"] = "wonjj6768/smalltv-ultra-korean-custom-firmware";
+    doc["latest_release_api"] =
+        "https://api.github.com/repos/wonjj6768/smalltv-ultra-korean-custom-firmware/releases/latest";
+
+    String json;
+    serializeJson(doc, json);
+
+    setCorsHeaders(webserver);
+    webserver->raw().send(HTTP_CODE_OK, "application/json", json);
 }
 
 /**
