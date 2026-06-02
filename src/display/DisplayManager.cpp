@@ -60,6 +60,7 @@ static constexpr int WRAP_MAX_LINE_SLOTS = 10;
 static constexpr time_t CLOCK_REASONABLE_EPOCH = 1600000000UL;
 static constexpr uint32_t STARTUP_CLOCK_PAUSE_MS = 12000;
 static constexpr uint32_t TRANSIENT_CLOCK_PAUSE_MS = 5000;
+static constexpr uint32_t BRIGHTNESS_SCHEDULE_CHECK_MS = 30000;
 static constexpr int16_t CURRENT_WEATHER_ICON_Y = 0;
 static constexpr int16_t CURRENT_WEATHER_BADGE_SIZE = 22;
 static constexpr int16_t CURRENT_WEATHER_HEADER_TEXT_HEIGHT = 28;
@@ -78,6 +79,8 @@ static String g_clockSecondaryBlockCache;
 static String g_clockDateCache;
 static String g_weatherTitleCache;
 static String g_weatherCurrentCache;
+static uint8_t g_lastAppliedBrightness = 0xFF;
+static unsigned long g_nextBrightnessScheduleCheckMs = 0;
 static std::array<String, 4> g_weatherForecastCache{};
 static int g_currentWeatherIconCache = -999;
 static std::array<int, 4> g_forecastWeatherIconCache = {-999, -999, -999, -999};
@@ -146,6 +149,40 @@ static auto lcdClockSecondsCanvasX() -> int16_t {
 static auto lcdClockSecondsCanvasY() -> int16_t {
     const int16_t primaryHeight = static_cast<int16_t>(ClockDigitFont::fontSet(ClockDigitFont::Kind::Main).lineHeight);
     return static_cast<int16_t>(ClockDashboard::TIME_TOP_Y + primaryHeight - lcdClockSecondsCanvasHeight());
+}
+
+static auto lcdIsNightBrightnessActive() -> bool {
+    if (!configManager.isDisplayNightBrightnessEnabled()) {
+        return false;
+    }
+
+    const time_t now = lcdCurrentTimeNow();
+    if (now <= CLOCK_REASONABLE_EPOCH) {
+        return false;
+    }
+
+    const tm* timeInfo = std::localtime(&now);
+    if (timeInfo == nullptr) {
+        return false;
+    }
+
+    const uint16_t currentMinute =
+        static_cast<uint16_t>((timeInfo->tm_hour * 60) + timeInfo->tm_min);
+    const uint16_t startMinute = configManager.getDisplayNightStartMinute();
+    const uint16_t endMinute = configManager.getDisplayNightEndMinute();
+
+    if (startMinute == endMinute) {
+        return false;
+    }
+    if (startMinute < endMinute) {
+        return currentMinute >= startMinute && currentMinute < endMinute;
+    }
+    return currentMinute >= startMinute || currentMinute < endMinute;
+}
+
+static auto lcdConfiguredBrightness() -> uint8_t {
+    return lcdIsNightBrightnessActive() ? configManager.getDisplayNightBrightness()
+                                        : configManager.getDisplayBrightness();
 }
 
 static void lcdEnsureClockTimeCanvas() {
@@ -1495,6 +1532,16 @@ static inline void lcdApplyBacklightBrightness(uint8_t brightnessPercent) {
 
 void DisplayManager::setBrightness(uint8_t brightnessPercent) { lcdApplyBacklightBrightness(brightnessPercent); }
 
+void DisplayManager::applyConfiguredBrightness() {
+    const uint8_t brightness = lcdConfiguredBrightness();
+    if (brightness == g_lastAppliedBrightness) {
+        return;
+    }
+
+    lcdApplyBacklightBrightness(brightness);
+    g_lastAppliedBrightness = brightness;
+}
+
 /**
  * @brief Write a single command byte to the ST7789 via the data bus
  *
@@ -1648,7 +1695,7 @@ static void lcdHardReset() {
 static void lcdEnsureInit() {
     Logger::info("Initialization started", "DisplayManager");
 
-    lcdApplyBacklightBrightness(configManager.getDisplayBrightness());
+    DisplayManager::applyConfiguredBrightness();
 
     uint8_t rotation = configManager.getLCDRotationSafe();
 
@@ -2140,6 +2187,12 @@ auto DisplayManager::stopGif() -> bool {
  * @return void
  */
 auto DisplayManager::update() -> void {
+    const unsigned long nowMs = millis();
+    if (static_cast<long>(nowMs - g_nextBrightnessScheduleCheckMs) >= 0) {
+        DisplayManager::applyConfiguredBrightness();
+        g_nextBrightnessScheduleCheckMs = millis() + BRIGHTNESS_SCHEDULE_CHECK_MS;
+    }
+
     if (g_gif != nullptr) {
         g_gif->update();
         if (g_gif->isPlaying()) {
@@ -2151,7 +2204,6 @@ auto DisplayManager::update() -> void {
         return;
     }
 
-    const unsigned long nowMs = millis();
     if (static_cast<long>(nowMs - g_clockPausedUntilMs) < 0) {
         return;
     }

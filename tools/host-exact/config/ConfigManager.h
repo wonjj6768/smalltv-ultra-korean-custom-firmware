@@ -26,6 +26,14 @@ class ConfigManager {
     auto setLCDRotation(uint8_t rotation) -> void { lcd_rotation = rotation; }
     auto getDisplayBrightness() const -> uint8_t { return display_brightness; }
     auto setDisplayBrightness(uint8_t brightness) -> void { display_brightness = brightness; }
+    auto isDisplayNightBrightnessEnabled() const -> bool { return display_night_brightness_enabled; }
+    auto setDisplayNightBrightnessEnabled(bool enabled) -> void { display_night_brightness_enabled = enabled; }
+    auto getDisplayNightBrightness() const -> uint8_t { return display_night_brightness; }
+    auto setDisplayNightBrightness(uint8_t brightness) -> void { display_night_brightness = brightness; }
+    auto getDisplayNightStartMinute() const -> uint16_t { return display_night_start_minute; }
+    auto setDisplayNightStartMinute(uint16_t minute) -> void { display_night_start_minute = minute; }
+    auto getDisplayNightEndMinute() const -> uint16_t { return display_night_end_minute; }
+    auto setDisplayNightEndMinute(uint16_t minute) -> void { display_night_end_minute = minute; }
     auto isClockEnabled() const -> bool { return clock_enabled; }
     auto setClockEnabled(bool enabled) -> void { clock_enabled = enabled; }
     auto isClockUse24Hour() const -> bool { return clock_use_24h; }
@@ -46,6 +54,10 @@ class ConfigManager {
 
     uint8_t lcd_rotation = 0;
     uint8_t display_brightness = 100;
+    bool display_night_brightness_enabled = false;
+    uint8_t display_night_brightness = 20;
+    uint16_t display_night_start_minute = 22 * 60;
+    uint16_t display_night_end_minute = 7 * 60;
     bool clock_enabled = true;
     bool clock_use_24h = true;
     bool weather_enabled = true;

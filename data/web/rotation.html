@@ -81,6 +81,49 @@
         />
         <small>Minimum brightness is limited to 5% so the screen stays visible.</small>
 
+        <label style="margin-top: 1em">
+          <input
+            type="checkbox"
+            x-model="nightBrightnessEnabled"
+            x-bind:disabled="loading"
+          />
+          Use scheduled low brightness
+        </label>
+
+        <div class="metric-grid">
+          <div class="metric-card">
+            <span>Start</span>
+            <input
+              type="time"
+              x-model="nightStartTime"
+              x-bind:disabled="loading || !nightBrightnessEnabled"
+            />
+          </div>
+          <div class="metric-card">
+            <span>End</span>
+            <input
+              type="time"
+              x-model="nightEndTime"
+              x-bind:disabled="loading || !nightBrightnessEnabled"
+            />
+          </div>
+        </div>
+
+        <label for="display-night-brightness">
+          Scheduled brightness
+          <strong x-text="nightBrightness + '%'"></strong>
+        </label>
+        <input
+          id="display-night-brightness"
+          type="range"
+          min="5"
+          max="100"
+          step="1"
+          x-model.number="nightBrightness"
+          x-bind:disabled="loading || !nightBrightnessEnabled"
+        />
+        <small>Overnight ranges such as 22:00 to 07:00 are supported.</small>
+
         <div
           style="margin-top: 0.5em; display: flex; gap: 0.5em; flex-wrap: wrap"
         >

@@ -51,6 +51,14 @@ class ConfigManager {
     void setLCDRotation(uint8_t newRotation);
     uint8_t getDisplayBrightness() const;
     void setDisplayBrightness(uint8_t brightnessPercent);
+    bool isDisplayNightBrightnessEnabled() const;
+    void setDisplayNightBrightnessEnabled(bool enabled);
+    uint8_t getDisplayNightBrightness() const;
+    void setDisplayNightBrightness(uint8_t brightnessPercent);
+    uint16_t getDisplayNightStartMinute() const;
+    void setDisplayNightStartMinute(uint16_t minuteOfDay);
+    uint16_t getDisplayNightEndMinute() const;
+    void setDisplayNightEndMinute(uint16_t minuteOfDay);
     bool isClockEnabled() const;
     void setClockEnabled(bool enabled);
     bool isClockUse24Hour() const;
@@ -85,6 +93,10 @@ class ConfigManager {
     SecureStorage secure;
     uint8_t lcd_rotation = 0;
     uint8_t display_brightness = 100;
+    bool display_night_brightness_enabled = false;
+    uint8_t display_night_brightness = 20;
+    uint16_t display_night_start_minute = 22 * 60;
+    uint16_t display_night_end_minute = 7 * 60;
     bool clock_enabled = true;
     bool clock_use_24h = true;
     bool weather_enabled = true;

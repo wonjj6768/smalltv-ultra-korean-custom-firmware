@@ -968,6 +968,10 @@ void handleDisplayBrightnessGet(Webserver* webserver) {
     doc["brightness"] = configManager.getDisplayBrightness();
     doc["min"] = 5;
     doc["max"] = 100;
+    doc["night_enabled"] = configManager.isDisplayNightBrightnessEnabled();
+    doc["night_brightness"] = configManager.getDisplayNightBrightness();
+    doc["night_start_minute"] = configManager.getDisplayNightStartMinute();
+    doc["night_end_minute"] = configManager.getDisplayNightEndMinute();
 
     String json;
     serializeJson(doc, json);
@@ -999,10 +1003,10 @@ void handleDisplayBrightnessSet(Webserver* webserver) {
     JsonDocument ddoc;
     DeserializationError err = deserializeJson(ddoc, body);
 
-    if (err || !ddoc["brightness"].is<int>()) {
+    if (err) {
         JsonDocument doc;
         doc["status"] = "error";
-        doc["message"] = "Invalid JSON or missing brightness";
+        doc["message"] = "Invalid JSON";
 
         String json;
         serializeJson(doc, json);
@@ -1013,7 +1017,7 @@ void handleDisplayBrightnessSet(Webserver* webserver) {
         return;
     }
 
-    int brightness = ddoc["brightness"].as<int>();
+    int brightness = ddoc["brightness"] | configManager.getDisplayBrightness();
     if (brightness < 5) {
         brightness = 5;
     }
@@ -1021,8 +1025,36 @@ void handleDisplayBrightnessSet(Webserver* webserver) {
         brightness = 100;
     }
 
+    int nightBrightness = ddoc["night_brightness"] | configManager.getDisplayNightBrightness();
+    if (nightBrightness < 5) {
+        nightBrightness = 5;
+    }
+    if (nightBrightness > 100) {
+        nightBrightness = 100;
+    }
+
+    int nightStartMinute = ddoc["night_start_minute"] | configManager.getDisplayNightStartMinute();
+    if (nightStartMinute < 0) {
+        nightStartMinute = 0;
+    }
+    if (nightStartMinute > 1439) {
+        nightStartMinute = 1439;
+    }
+
+    int nightEndMinute = ddoc["night_end_minute"] | configManager.getDisplayNightEndMinute();
+    if (nightEndMinute < 0) {
+        nightEndMinute = 0;
+    }
+    if (nightEndMinute > 1439) {
+        nightEndMinute = 1439;
+    }
+
     configManager.setDisplayBrightness(static_cast<uint8_t>(brightness));
-    DisplayManager::setBrightness(configManager.getDisplayBrightness());
+    configManager.setDisplayNightBrightnessEnabled(ddoc["night_enabled"] | configManager.isDisplayNightBrightnessEnabled());
+    configManager.setDisplayNightBrightness(static_cast<uint8_t>(nightBrightness));
+    configManager.setDisplayNightStartMinute(static_cast<uint16_t>(nightStartMinute));
+    configManager.setDisplayNightEndMinute(static_cast<uint16_t>(nightEndMinute));
+    DisplayManager::applyConfiguredBrightness();
 
     if (!configManager.save()) {
         JsonDocument doc;
@@ -1041,6 +1073,10 @@ void handleDisplayBrightnessSet(Webserver* webserver) {
     JsonDocument doc;
     doc["status"] = "ok";
     doc["brightness"] = configManager.getDisplayBrightness();
+    doc["night_enabled"] = configManager.isDisplayNightBrightnessEnabled();
+    doc["night_brightness"] = configManager.getDisplayNightBrightness();
+    doc["night_start_minute"] = configManager.getDisplayNightStartMinute();
+    doc["night_end_minute"] = configManager.getDisplayNightEndMinute();
 
     String json;
     serializeJson(doc, json);
