@@ -49,6 +49,8 @@ class ConfigManager {
     const char* getPassword() const;
     uint8_t getLCDRotation() const;
     void setLCDRotation(uint8_t newRotation);
+    uint8_t getDisplayBrightness() const;
+    void setDisplayBrightness(uint8_t brightnessPercent);
     bool isClockEnabled() const;
     void setClockEnabled(bool enabled);
     bool isClockUse24Hour() const;
@@ -82,6 +84,7 @@ class ConfigManager {
     std::string filename;
     SecureStorage secure;
     uint8_t lcd_rotation = 0;
+    uint8_t display_brightness = 100;
     bool clock_enabled = true;
     bool clock_use_24h = true;
     bool weather_enabled = true;

@@ -64,6 +64,16 @@ static auto normalizeWeatherLocationName(const String& value) -> String {
     return displayName.length() > 0 ? displayName : normalized;
 }
 
+static auto clampDisplayBrightness(int value) -> uint8_t {
+    if (value < 5) {
+        return 5;
+    }
+    if (value > 100) {
+        return 100;
+    }
+    return static_cast<uint8_t>(value);
+}
+
 static auto timezoneRegionFromOffsetMinutes(int offsetMinutes) -> String {
     switch (offsetMinutes) {
         case 540:
@@ -161,6 +171,7 @@ auto ConfigManager::load() -> bool {
     int timezone_offset_minutes_cfg = doc["timezone_offset_minutes"] | timezone_offset_minutes;
 
     this->lcd_rotation = doc["lcd_rotation"] | lcd_rotation;
+    this->display_brightness = clampDisplayBrightness(doc["display_brightness"] | display_brightness);
     this->clock_enabled = clock_enabled_cfg;
     this->clock_use_24h = clock_use_24h_cfg;
     this->weather_enabled = weather_enabled_cfg;
@@ -299,6 +310,12 @@ auto ConfigManager::getLCDRotation() const -> uint8_t { return lcd_rotation; }
  */
 auto ConfigManager::setLCDRotation(uint8_t newRotation) -> void { lcd_rotation = newRotation; }
 
+auto ConfigManager::getDisplayBrightness() const -> uint8_t { return display_brightness; }
+
+auto ConfigManager::setDisplayBrightness(uint8_t brightnessPercent) -> void {
+    display_brightness = clampDisplayBrightness(brightnessPercent);
+}
+
 /**
  * @brief Set WiFi credentials in memory
  * @param newSsid The SSID
@@ -342,6 +359,7 @@ auto ConfigManager::save() -> bool {
     secure.put("wifi_password", this->getPassword());
 
     doc["lcd_rotation"] = lcd_rotation;
+    doc["display_brightness"] = display_brightness;
     doc["clock_enabled"] = clock_enabled;
     doc["clock_use_24h"] = clock_use_24h;
     doc["weather_enabled"] = weather_enabled;

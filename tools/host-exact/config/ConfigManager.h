@@ -24,6 +24,8 @@ class ConfigManager {
     auto getLCDRotation() const -> uint8_t { return lcd_rotation; }
     auto getLCDRotationSafe() const -> uint8_t { return lcd_rotation; }
     auto setLCDRotation(uint8_t rotation) -> void { lcd_rotation = rotation; }
+    auto getDisplayBrightness() const -> uint8_t { return display_brightness; }
+    auto setDisplayBrightness(uint8_t brightness) -> void { display_brightness = brightness; }
     auto isClockEnabled() const -> bool { return clock_enabled; }
     auto setClockEnabled(bool enabled) -> void { clock_enabled = enabled; }
     auto isClockUse24Hour() const -> bool { return clock_use_24h; }
@@ -43,6 +45,7 @@ class ConfigManager {
     auto setTimezoneRegion(const char* value) -> void { timezone_region = value == nullptr ? "" : value; }
 
     uint8_t lcd_rotation = 0;
+    uint8_t display_brightness = 100;
     bool clock_enabled = true;
     bool clock_use_24h = true;
     bool weather_enabled = true;

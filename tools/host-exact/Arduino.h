@@ -104,6 +104,9 @@ static constexpr uint8_t OUTPUT = 0x1;
 
 inline auto pinMode(uint8_t, uint8_t) -> void {}
 inline auto digitalWrite(uint8_t, uint8_t) -> void {}
+inline auto analogWrite(uint8_t, int) -> void {}
+inline auto analogWriteRange(int) -> void {}
+inline auto analogWriteFreq(int) -> void {}
 inline auto yield() -> void { std::this_thread::yield(); }
 inline auto delay(unsigned long ms) -> void { std::this_thread::sleep_for(std::chrono::milliseconds(ms)); }
 

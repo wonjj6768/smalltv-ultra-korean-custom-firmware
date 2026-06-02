@@ -1474,10 +1474,26 @@ auto DisplayManager::getGfx() -> Arduino_GFX* { return &g_lcd; }
  *
  * @return void
  */
-static inline void lcdBacklightOn() {
+static inline void lcdApplyBacklightBrightness(uint8_t brightnessPercent) {
+    if (brightnessPercent < 5U) {
+        brightnessPercent = 5U;
+    }
+    if (brightnessPercent > 100U) {
+        brightnessPercent = 100U;
+    }
+
+    static constexpr uint16_t PWM_RANGE = 1023;
+    static constexpr uint16_t PWM_FREQ_HZ = 1000;
+    const uint16_t activeDuty = static_cast<uint16_t>((static_cast<uint32_t>(brightnessPercent) * PWM_RANGE) / 100U);
+    const uint16_t duty = LCD_BACKLIGHT_ACTIVE_LOW ? static_cast<uint16_t>(PWM_RANGE - activeDuty) : activeDuty;
+
     pinMode((uint8_t)LCD_BACKLIGHT_GPIO, OUTPUT);
-    digitalWrite((uint8_t)LCD_BACKLIGHT_GPIO, LCD_BACKLIGHT_ACTIVE_LOW ? LOW : HIGH);
+    analogWriteRange(PWM_RANGE);
+    analogWriteFreq(PWM_FREQ_HZ);
+    analogWrite((uint8_t)LCD_BACKLIGHT_GPIO, duty);
 }
+
+void DisplayManager::setBrightness(uint8_t brightnessPercent) { lcdApplyBacklightBrightness(brightnessPercent); }
 
 /**
  * @brief Write a single command byte to the ST7789 via the data bus
@@ -1632,7 +1648,7 @@ static void lcdHardReset() {
 static void lcdEnsureInit() {
     Logger::info("Initialization started", "DisplayManager");
 
-    lcdBacklightOn();
+    lcdApplyBacklightBrightness(configManager.getDisplayBrightness());
 
     uint8_t rotation = configManager.getLCDRotationSafe();
 

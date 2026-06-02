@@ -98,6 +98,7 @@ Do not commit a private API key.
 - `http://<device-ip>/api/v1/weather/config`: weather config / 날씨 설정
 - `http://<device-ip>/api/v1/weather/status`: cached weather state / 캐시된 날씨 상태
 - `http://<device-ip>/api/v1/weather/refresh`: weather refresh / 날씨 갱신
+- `http://<device-ip>/api/v1/display/brightness`: display brightness / 디스플레이 밝기
 - `http://<device-ip>/api/v1/ota/fw`: firmware OTA upload / 펌웨어 OTA 업로드
 - `http://<device-ip>/api/v1/ota/fs`: LittleFS OTA upload / LittleFS OTA 업로드
 
@@ -106,4 +107,3 @@ Do not commit a private API key.
 Use `docs/release-checklist.md` before publishing a GitHub release.
 
 GitHub 릴리즈 전에는 `docs/release-checklist.md`를 사용합니다.
-

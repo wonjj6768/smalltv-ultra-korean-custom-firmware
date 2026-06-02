@@ -48,6 +48,8 @@ void handleDisplayClockGet(Webserver* webserver);
 void handleDisplayClockSet(Webserver* webserver);
 void handleDisplayRotationGet(Webserver* webserver);
 void handleDisplayRotationSet(Webserver* webserver);
+void handleDisplayBrightnessGet(Webserver* webserver);
+void handleDisplayBrightnessSet(Webserver* webserver);
 void handleDisplayStartup(Webserver* webserver);
 
 void handleLogsGet(Webserver* webserver);

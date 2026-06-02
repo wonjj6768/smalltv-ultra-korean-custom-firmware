@@ -210,6 +210,11 @@ void registerApiEndpoints(Webserver* webserver) {
     // responses=200:application/json,400:application/json,401:application/json
     webserver->raw().on("/api/v1/display/rotation", HTTP_POST, [webserver]() { handleDisplayRotationSet(webserver); });
 
+    webserver->raw().on("/api/v1/display/brightness", HTTP_GET,
+                        [webserver]() { handleDisplayBrightnessGet(webserver); });
+    webserver->raw().on("/api/v1/display/brightness", HTTP_POST,
+                        [webserver]() { handleDisplayBrightnessSet(webserver); });
+
     // @openapi {post} /display/startup version=v1 group=Display summary="Redraw the startup screen" requiresAuth=true
     // responses=200:application/json,401:application/json
     webserver->raw().on("/api/v1/display/startup", HTTP_POST, [webserver]() { handleDisplayStartup(webserver); });
@@ -952,6 +957,98 @@ void handleDisplayRotationSet(Webserver* webserver) {
     DisplayManager::setRotation(newRotation, currentIP);
 
     Logger::info(("Display rotation updated to " + String(newRotation)).c_str(), "API");
+}
+
+void handleDisplayBrightnessGet(Webserver* webserver) {
+    if (!requireBearerToken(webserver)) {
+        return;
+    }
+
+    JsonDocument doc;
+    doc["brightness"] = configManager.getDisplayBrightness();
+    doc["min"] = 5;
+    doc["max"] = 100;
+
+    String json;
+    serializeJson(doc, json);
+
+    setCorsHeaders(webserver);
+    webserver->raw().send(HTTP_CODE_OK, "application/json", json);
+}
+
+void handleDisplayBrightnessSet(Webserver* webserver) {
+    if (!requireBearerToken(webserver)) {
+        return;
+    }
+
+    if (!webserver->raw().hasArg("plain") || webserver->raw().arg("plain").length() == 0) {
+        JsonDocument doc;
+        doc["status"] = "error";
+        doc["message"] = "Missing JSON body";
+
+        String json;
+        serializeJson(doc, json);
+
+        setCorsHeaders(webserver);
+        webserver->raw().send(HTTP_CODE_BAD_REQUEST, "application/json", json);
+
+        return;
+    }
+
+    String body = webserver->raw().arg("plain");
+    JsonDocument ddoc;
+    DeserializationError err = deserializeJson(ddoc, body);
+
+    if (err || !ddoc["brightness"].is<int>()) {
+        JsonDocument doc;
+        doc["status"] = "error";
+        doc["message"] = "Invalid JSON or missing brightness";
+
+        String json;
+        serializeJson(doc, json);
+
+        setCorsHeaders(webserver);
+        webserver->raw().send(HTTP_CODE_BAD_REQUEST, "application/json", json);
+
+        return;
+    }
+
+    int brightness = ddoc["brightness"].as<int>();
+    if (brightness < 5) {
+        brightness = 5;
+    }
+    if (brightness > 100) {
+        brightness = 100;
+    }
+
+    configManager.setDisplayBrightness(static_cast<uint8_t>(brightness));
+    DisplayManager::setBrightness(configManager.getDisplayBrightness());
+
+    if (!configManager.save()) {
+        JsonDocument doc;
+        doc["status"] = "error";
+        doc["message"] = "Failed to save config";
+
+        String json;
+        serializeJson(doc, json);
+
+        setCorsHeaders(webserver);
+        webserver->raw().send(HTTP_CODE_INTERNAL_ERROR, "application/json", json);
+
+        return;
+    }
+
+    JsonDocument doc;
+    doc["status"] = "ok";
+    doc["brightness"] = configManager.getDisplayBrightness();
+
+    String json;
+    serializeJson(doc, json);
+
+    setCorsHeaders(webserver);
+    webserver->raw().send(HTTP_CODE_OK, "application/json", json);
+
+    Logger::info(("Display brightness updated to " + String(configManager.getDisplayBrightness())).c_str(), "API");
 }
 
 void handleWeatherConfigGet(Webserver* webserver) {

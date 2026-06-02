@@ -3,6 +3,7 @@
   "wifi_password": "",
   "api_token": "your_secure_token_here",
   "lcd_rotation": 0,
+  "display_brightness": 100,
   "clock_enabled": true,
   "clock_use_24h": true,
   "weather_enabled": true,

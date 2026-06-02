@@ -3,14 +3,14 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Screen Rotation</title>
-    <link rel="stylesheet" href="./css/pico.min.css?v=20260601" />
-    <link rel="stylesheet" href="./css/style.css?v=20260601" />
-    <script src="./js/alpinejs.min.js?v=20260601" defer></script>
-    <script src="./js/utils.js?v=20260601"></script>
-    <script src="./js/themeSwitcher.js?v=20260601"></script>
-    <script src="./js/rotationHandler.js?v=20260601"></script>
-    <script src="./js/main.js?v=20260601"></script>
+    <title>Display Settings</title>
+    <link rel="stylesheet" href="./css/pico.min.css?v=20260602b" />
+    <link rel="stylesheet" href="./css/style.css?v=20260602b" />
+    <script src="./js/alpinejs.min.js?v=20260602b" defer></script>
+    <script src="./js/utils.js?v=20260602b"></script>
+    <script src="./js/themeSwitcher.js?v=20260602b"></script>
+    <script src="./js/rotationHandler.js?v=20260602b"></script>
+    <script src="./js/main.js?v=20260602b"></script>
   </head>
   <body>
     <main class="container">
@@ -19,9 +19,9 @@
       <a href="./index.html" class="wifi-back-link">← Back to Home</a>
 
       <section x-data="rotationHandler()" x-init="init()">
-        <h2>Display Rotation</h2>
+        <h2>Display Settings</h2>
 
-        <p>Choose a display orientation and apply it immediately.</p>
+        <p>Adjust LCD orientation and backlight brightness.</p>
 
         <label for="screen-rotation">Rotation</label>
         <select
@@ -58,6 +58,43 @@
           <button
             type="button"
             @click="fetchRotation()"
+            x-bind:disabled="loading"
+          >
+            Refresh
+          </button>
+        </div>
+
+        <hr />
+
+        <label for="display-brightness">
+          Brightness <strong x-text="brightness + '%'"></strong>
+        </label>
+        <input
+          id="display-brightness"
+          type="range"
+          min="5"
+          max="100"
+          step="1"
+          x-model.number="brightness"
+          x-bind:disabled="loading"
+          @change="saveBrightness()"
+        />
+        <small>Minimum brightness is limited to 5% so the screen stays visible.</small>
+
+        <div
+          style="margin-top: 0.5em; display: flex; gap: 0.5em; flex-wrap: wrap"
+        >
+          <button
+            type="button"
+            class="primary"
+            @click="saveBrightness()"
+            x-bind:disabled="loading"
+          >
+            Save Brightness
+          </button>
+          <button
+            type="button"
+            @click="fetchBrightness()"
             x-bind:disabled="loading"
           >
             Refresh
