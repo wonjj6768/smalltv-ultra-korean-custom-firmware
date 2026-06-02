@@ -28,6 +28,20 @@ This firmware is intended for **SmallTV-Ultra only**.
 
 이 펌웨어는 **SmallTV-Ultra 전용**으로 정리했습니다.
 
+## Disclaimer / 면책
+
+This is an unofficial custom firmware for SmallTV-Ultra. It is not affiliated with or endorsed by GeekMagic, Times-Z, the original firmware author, KMA, or any weather data provider.
+
+이 펌웨어는 SmallTV-Ultra용 비공식 커스텀 펌웨어입니다. GeekMagic, Times-Z, 원본 펌웨어 개발자, 기상청 또는 날씨 데이터 제공기관과 공식적인 관련이 없습니다.
+
+Flashing custom firmware can fail and may require serial recovery. Use it at your own risk, and make sure your device is SmallTV-Ultra before installing.
+
+커스텀 펌웨어 설치는 실패할 수 있으며, 경우에 따라 시리얼 복구가 필요할 수 있습니다. 반드시 SmallTV-Ultra 기기인지 확인한 뒤 본인 책임하에 사용하세요.
+
+Weather and air-quality data may be delayed, unavailable, or inaccurate depending on API availability, region settings, and provider data.
+
+날씨 및 대기질 정보는 API 상태, 지역 설정, 제공기관 데이터에 따라 지연되거나, 표시되지 않거나, 실제와 다를 수 있습니다.
+
 ## Release Files / 릴리즈 파일
 
 Download the files from [GitHub Releases](https://github.com/wonjj6768/smalltv-ultra-korean-custom-firmware/releases).
@@ -85,6 +99,22 @@ Open the device web UI after installation.
 The public firmware does not include a private KMA API key.
 
 공개 펌웨어에는 개인 기상청 API 인증키가 포함되어 있지 않습니다.
+
+## KMA API Key / 기상청 API 키
+
+Weather data uses KMA APIHub.
+
+날씨 데이터는 기상청 APIHub를 사용합니다.
+
+- Issue an authKey from [KMA APIHub](https://apihub.kma.go.kr/apiList.do).
+- This firmware uses KMA short-term forecast APIs such as ultra-short current/forecast and village forecast.
+- The public firmware does not include a private API key.
+- Enter your own key in the device web UI: `Dashboard` -> `KMA APIHub Key`.
+
+- [기상청 API허브](https://apihub.kma.go.kr/apiList.do)에서 authKey를 발급받습니다.
+- 이 펌웨어는 초단기실황, 초단기예보, 단기예보 계열 데이터를 사용합니다.
+- 공개 펌웨어에는 개인 API 키가 포함되어 있지 않습니다.
+- 기기 웹 UI의 `Dashboard` -> `KMA APIHub Key`에 본인 키를 입력하세요.
 
 ## Documentation / 문서
 
