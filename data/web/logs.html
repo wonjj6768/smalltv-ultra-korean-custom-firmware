@@ -4,89 +4,73 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>System Logs</title>
-    <link rel="stylesheet" href="./css/pico.min.css?v=20260601" />
-    <link rel="stylesheet" href="./css/style.css?v=20260601" />
-    <script src="./js/alpinejs.min.js?v=20260601" defer></script>
-    <script src="./js/utils.js?v=20260601"></script>
-    <script src="./js/themeSwitcher.js?v=20260601"></script>
-    <script src="./js/logsHandler.js?v=20260601"></script>
-    <script src="./js/main.js?v=20260601"></script>
+    <link rel="stylesheet" href="./css/pico.min.css?v=20260602d" />
+    <link rel="stylesheet" href="./css/style.css?v=20260602d" />
+    <script src="./js/alpinejs.min.js?v=20260602d" defer></script>
+    <script src="./js/utils.js?v=20260602d"></script>
+    <script src="./js/logsHandler.js?v=20260602d"></script>
+    <script src="./js/main.js?v=20260602d"></script>
   </head>
   <body>
-    <main class="container">
+    <main class="container app-shell">
       <header id="header-placeholder"></header>
 
-      <a href="./index.html" class="wifi-back-link">← Back to Home</a>
+      <a href="./index.html" class="back-link">← Back to Home</a>
 
-      <section x-data="logsHandler()" x-init="init()">
-        <h2>System Logs</h2>
-
-        <div
-          style="margin-bottom: 1em; display: flex; gap: 0.5em; flex-wrap: wrap"
-        >
-          <button
-            type="button"
-            class="primary"
-            @click="fetchLogs()"
-            x-bind:disabled="loading"
-          >
-            Refresh
-          </button>
-          <button
-            type="button"
-            class="secondary"
-            @click="downloadLogs()"
-            x-bind:disabled="loading"
-          >
-            Download
-          </button>
-          <button
-            type="button"
-            class="contrast"
-            @click="clearLogs()"
-            x-bind:disabled="loading"
-          >
-            Clear
-          </button>
+      <section x-data="logsHandler()" x-init="init()" class="settings-page">
+        <div class="page-hero">
+          <p class="eyebrow">Diagnostics</p>
+          <h2>System Logs</h2>
+          <p>Only warning and error logs are kept here to reduce device load.</p>
         </div>
 
-        <p>
-          <small x-text="'Showing ' + logs.length + ' log entries'"></small>
-        </p>
-        <p>
-          <small
-            x-text="'Only WARNING and ERROR logs are shown here for optimisation. Please check the serial output for more details.'"
-          ></small>
-        </p>
+        <article class="setting-card">
+          <header class="card-heading">
+            <div>
+              <p class="eyebrow">Logs</p>
+              <h3>Runtime Entries</h3>
+            </div>
+            <span class="status-pill" x-text="'Showing ' + logs.length"></span>
+          </header>
 
-        <div
-          style="
-            background: var(--pico-code-background-color);
-            padding: 1em;
-            border-radius: 4px;
-            max-height: 60vh;
-            overflow-y: auto;
-            font-family: monospace;
-            font-size: 0.85em;
-          "
-        >
-          <template x-if="logs.length === 0">
-            <p style="color: var(--pico-muted-color)">No logs available</p>
-          </template>
-          <template x-for="(log, index) in logs" :key="index">
-            <div
-              x-text="log"
-              style="
-                white-space: pre-wrap;
-                word-break: break-all;
-                padding: 2px 0;
-                border-bottom: 1px solid var(--pico-muted-border-color);
-              "
-            ></div>
-          </template>
-        </div>
+          <div class="action-row">
+            <button
+              type="button"
+              class="primary"
+              @click="fetchLogs()"
+              x-bind:disabled="loading"
+            >
+              Refresh
+            </button>
+            <button
+              type="button"
+              class="secondary"
+              @click="downloadLogs()"
+              x-bind:disabled="loading"
+            >
+              Download
+            </button>
+            <button
+              type="button"
+              class="contrast"
+              @click="clearLogs()"
+              x-bind:disabled="loading"
+            >
+              Clear
+            </button>
+          </div>
 
-        <p x-show="message" x-text="message" style="margin-top: 1em"></p>
+          <div class="log-box">
+            <template x-if="logs.length === 0">
+              <p>No logs available</p>
+            </template>
+            <template x-for="(log, index) in logs" :key="index">
+              <div x-text="log" class="log-line"></div>
+            </template>
+          </div>
+
+          <p x-show="message" x-text="message"></p>
+        </article>
       </section>
 
       <footer id="footer-placeholder"></footer>

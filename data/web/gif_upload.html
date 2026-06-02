@@ -4,79 +4,77 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>GIF Upload - In Development</title>
-    <link rel="stylesheet" href="./css/pico.min.css?v=20260602" />
-    <link rel="stylesheet" href="./css/style.css?v=20260602" />
-    <script src="./js/alpinejs.min.js?v=20260602" defer></script>
-    <script src="./js/utils.js?v=20260602"></script>
-    <script src="./js/themeSwitcher.js?v=20260602"></script>
-    <script src="./js/gifUploadHandler.js?v=20260602"></script>
-    <script src="./js/main.js?v=20260602"></script>
+    <link rel="stylesheet" href="./css/pico.min.css?v=20260602d" />
+    <link rel="stylesheet" href="./css/style.css?v=20260602d" />
+    <script src="./js/alpinejs.min.js?v=20260602d" defer></script>
+    <script src="./js/utils.js?v=20260602d"></script>
+    <script src="./js/gifUploadHandler.js?v=20260602d"></script>
+    <script src="./js/main.js?v=20260602d"></script>
   </head>
   <body>
-    <main class="container">
+    <main class="container app-shell">
       <header id="header-placeholder"></header>
 
-      <a href="./index.html" style="margin-left: 2em">← Back to Home</a>
-      <section>
-        <div x-data="gifUploadHandler()" style="margin-top: 2em">
+      <a href="./index.html" class="back-link">← Back to Home</a>
+      <section x-data="gifUploadHandler()" class="settings-page">
+        <div class="page-hero">
+          <p class="eyebrow">GIF</p>
           <h2>GIF Upload</h2>
-          <article>
-            <strong>In development.</strong>
-            GIF upload/playback code is kept in the firmware, but this feature is
-            not ready for normal use yet.
-          </article>
+          <p>Development feature. Keep disabled unless you are testing GIF code.</p>
+        </div>
+        <article class="setting-card">
+          <strong>In development.</strong>
+          GIF upload/playback code is kept in the firmware, but this feature is
+          not ready for normal use yet.
           <form @submit.prevent="uploadGif">
             <input type="file" x-ref="fileInput" required accept="image/gif" />
             <button type="submit" x-bind:disabled="uploading">Upload</button>
           </form>
           <template x-if="uploading">
-            <span aria-busy="true" style="margin-left: 1em">Uploading...</span>
+            <span aria-busy="true">Uploading...</span>
           </template>
           <p x-text="uploadMessage"></p>
+        </article>
 
-          <section style="margin-top: 2em">
-            <h3>GIFs on device</h3>
-            <div style="margin-bottom: 0.5em">
-              <button @click="stopGif()">Stop playback</button>
-            </div>
-            <div x-show="gifListLoaded">
-              <p>
-                <strong>Used:</strong> <span x-text="usedBytesHR"></span> /
-                <strong>Total:</strong>
-                <span x-text="totalBytesHR"></span> (<strong>Free:</strong>
-                <span x-text="freeBytesHR"></span>)
-              </p>
-              <template x-if="gifs.length === 0">
-                <p>No GIFs uploaded yet.</p>
-              </template>
-              <ul>
-                <template x-for="gif in gifs" :key="gif.name">
-                  <li>
-                    <span x-text="gif.name"></span> (<span
-                      x-text="humanFileSize(gif.size)"
-                    ></span
-                    >)
-                    <button
-                      @click="playGifFullscreen(gif.name)"
-                      style="margin-left: 1em"
-                    >
+        <article class="setting-card">
+          <h3>GIFs on device</h3>
+          <div class="gif-actions">
+            <button @click="stopGif()">Stop playback</button>
+          </div>
+          <div x-show="gifListLoaded">
+            <p>
+              <strong>Used:</strong> <span x-text="usedBytesHR"></span> /
+              <strong>Total:</strong>
+              <span x-text="totalBytesHR"></span> (<strong>Free:</strong>
+              <span x-text="freeBytesHR"></span>)
+            </p>
+            <template x-if="gifs.length === 0">
+              <p>No GIFs uploaded yet.</p>
+            </template>
+            <ul>
+              <template x-for="gif in gifs" :key="gif.name">
+                <li>
+                  <span x-text="gif.name"></span>
+                  (<span x-text="humanFileSize(gif.size)"></span>)
+                  <div class="gif-actions">
+                    <button @click="playGifFullscreen(gif.name)">
                       Play fullscreen
                     </button>
                     <button
+                      class="danger-action"
                       @click="deleteGif(gif.name)"
-                      style="margin-left: 0.5em; color: #b00"
                     >
                       Delete
                     </button>
-                  </li>
-                </template>
-              </ul>
-            </div>
-            <div x-show="!gifListLoaded">
-              <em>Loading GIF list...</em>
-            </div>
-          </section>
-        </div>
+                  </div>
+                </li>
+              </template>
+            </ul>
+          </div>
+          <div x-show="!gifListLoaded">
+            <em>Loading GIF list...</em>
+          </div>
+        </article>
       </section>
 
       <footer id="footer-placeholder"></footer>

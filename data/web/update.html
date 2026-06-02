@@ -4,21 +4,24 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Firmware / FS Update</title>
-    <link rel="stylesheet" href="./css/pico.min.css?v=20260601" />
-    <link rel="stylesheet" href="./css/style.css?v=20260601" />
-    <script src="./js/alpinejs.min.js?v=20260601" defer></script>
-    <script src="./js/utils.js?v=20260601"></script>
-    <script src="./js/themeSwitcher.js?v=20260601"></script>
-    <script src="./js/otaUploadHandler.js?v=20260601"></script>
-    <script src="./js/main.js?v=20260601"></script>
+    <link rel="stylesheet" href="./css/pico.min.css?v=20260602d" />
+    <link rel="stylesheet" href="./css/style.css?v=20260602d" />
+    <script src="./js/alpinejs.min.js?v=20260602d" defer></script>
+    <script src="./js/utils.js?v=20260602d"></script>
+    <script src="./js/otaUploadHandler.js?v=20260602d"></script>
+    <script src="./js/main.js?v=20260602d"></script>
   </head>
   <body>
-    <main class="container">
+    <main class="container app-shell">
       <header id="header-placeholder"></header>
-      <a href="./index.html" style="margin-left: 2em">← Back to Home</a>
-      <section>
-        <div x-data="otaUploadHandler()" style="margin-top: 2em">
-          <h2>Update firmware or FS</h2>
+      <a href="./index.html" class="back-link">← Back to Home</a>
+      <section x-data="otaUploadHandler()" class="settings-page">
+        <div class="page-hero">
+          <p class="eyebrow">Update</p>
+          <h2>Firmware / LittleFS</h2>
+          <p>Upload only the release binaries built for SmallTV-Ultra.</p>
+        </div>
+        <article class="setting-card">
           <form @submit.prevent="uploadFile">
             <input type="file" x-ref="fileInput" required accept=".bin" />
             <select x-model="uploadType">
@@ -28,17 +31,10 @@
             <button type="submit" x-bind:disabled="uploading">Upload</button>
           </form>
           <template x-if="uploading">
-            <div style="margin-top: 1em">
+            <div class="upload-progress">
               <label>Progress</label>
               <progress max="100" :value="progress"></progress>
-              <div
-                style="
-                  display: flex;
-                  gap: 1em;
-                  align-items: center;
-                  margin-top: 0.5em;
-                "
-              >
+              <div class="upload-progress-row">
                 <div><strong x-text="progress + '%'"></strong></div>
                 <div x-text="etaText"></div>
                 <button @click="cancelUpload" type="button">Cancel</button>
@@ -46,7 +42,7 @@
             </div>
           </template>
           <p x-text="uploadMessage"></p>
-        </div>
+        </article>
       </section>
 
       <footer id="footer-placeholder"></footer>

@@ -4,79 +4,93 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>NTP Sync</title>
-    <link rel="stylesheet" href="./css/pico.min.css?v=20260601" />
-    <link rel="stylesheet" href="./css/style.css?v=20260601" />
-    <script src="./js/alpinejs.min.js?v=20260601" defer></script>
-    <script src="./js/utils.js?v=20260601"></script>
-    <script src="./js/themeSwitcher.js?v=20260601"></script>
-    <script src="./js/ntpHandler.js?v=20260601"></script>
-    <script src="./js/main.js?v=20260601"></script>
+    <link rel="stylesheet" href="./css/pico.min.css?v=20260602d" />
+    <link rel="stylesheet" href="./css/style.css?v=20260602d" />
+    <script src="./js/alpinejs.min.js?v=20260602d" defer></script>
+    <script src="./js/utils.js?v=20260602d"></script>
+    <script src="./js/ntpHandler.js?v=20260602d"></script>
+    <script src="./js/main.js?v=20260602d"></script>
   </head>
   <body>
-    <main class="container">
+    <main class="container app-shell">
       <header id="header-placeholder"></header>
 
-      <a href="./index.html" class="wifi-back-link">← Back to Home</a>
+      <a href="./index.html" class="back-link">← Back to Home</a>
 
-      <section x-data="ntpHandler()" x-init="init()">
-        <h2>NTP Time</h2>
-
-        <p>
-          <strong>Status:</strong>
-          <span x-text="lastStatus"></span>
-        </p>
-
-        <p>
-          <strong>Last sync:</strong>
-          <span x-text="humanTime(lastSyncTime)"></span>
-        </p>
-
-        <div>
-          <button
-            type="button"
-            class="primary"
-            @click="syncNow()"
-            x-bind:disabled="loading"
-          >
-            Sync Now
-          </button>
-          <button type="button" class="primary" @click="fetchStatus()">
-            Refresh Status
-          </button>
+      <section x-data="ntpHandler()" x-init="init()" class="settings-page">
+        <div class="page-hero">
+          <p class="eyebrow">Time</p>
+          <h2>NTP Time</h2>
+          <p>Keep the clock synced before weather and brightness schedules run.</p>
         </div>
 
-        <hr />
+        <div class="settings-grid">
+          <article class="setting-card">
+            <header class="card-heading">
+              <div>
+                <p class="eyebrow">Status</p>
+                <h3>Current Sync</h3>
+              </div>
+              <span class="status-pill" x-text="lastStatus"></span>
+            </header>
 
-        <div class="ntp-config">
-          <h3>NTP Configuration</h3>
-          <label for="ntp-server">NTP Server</label>
-          <input
-            id="ntp-server"
-            type="text"
-            x-model="ntpServer"
-            placeholder="pool.ntp.org"
-          />
-          <label for="timezone-region" style="margin-top: 0.75em"
-            >Timezone Region</label
-          >
-          <select id="timezone-region" x-model="timezoneRegion">
-            <template x-for="option in timezoneOptions" :key="option.value">
-              <option :value="option.value" x-text="option.label"></option>
-            </template>
-          </select>
-          <small x-text="timezoneDescription"></small>
-          <div style="margin-top: 0.5em">
-            <button type="button" class="primary" @click="saveConfig()">
-              Save
-            </button>
-          </div>
+            <div class="metric-grid">
+              <div class="metric-card">
+                <span>Last sync</span>
+                <strong x-text="humanTime(lastSyncTime)"></strong>
+              </div>
+              <div class="metric-card">
+                <span>Result</span>
+                <strong
+                  x-text="lastOk ? 'Succeeded' : 'Failed or not performed'"
+                ></strong>
+              </div>
+            </div>
+
+            <div class="action-row spaced">
+              <button
+                type="button"
+                class="primary"
+                @click="syncNow()"
+                x-bind:disabled="loading"
+              >
+                Sync Now
+              </button>
+              <button type="button" @click="fetchStatus()">Refresh</button>
+            </div>
+          </article>
+
+          <article class="setting-card">
+            <header class="card-heading">
+              <div>
+                <p class="eyebrow">Configuration</p>
+                <h3>NTP Server</h3>
+              </div>
+            </header>
+
+            <label for="ntp-server">NTP Server</label>
+            <input
+              id="ntp-server"
+              type="text"
+              x-model="ntpServer"
+              placeholder="pool.ntp.org"
+            />
+
+            <label for="timezone-region">Timezone Region</label>
+            <select id="timezone-region" x-model="timezoneRegion">
+              <template x-for="option in timezoneOptions" :key="option.value">
+                <option :value="option.value" x-text="option.label"></option>
+              </template>
+            </select>
+            <small x-text="timezoneDescription"></small>
+
+            <div class="action-row spaced">
+              <button type="button" class="primary" @click="saveConfig()">
+                Save
+              </button>
+            </div>
+          </article>
         </div>
-
-        <p>
-          <small
-            x-text="lastOk ? 'Last sync succeeded' : 'Last sync failed or not performed'"
-          ></small>
-        </p>
       </section>
 
       <footer id="footer-placeholder"></footer>

@@ -4,25 +4,33 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>WiFi management</title>
-    <link rel="stylesheet" href="./css/pico.min.css?v=20260601" />
-    <link rel="stylesheet" href="./css/style.css?v=20260601" />
-    <script src="./js/alpinejs.min.js?v=20260601" defer></script>
-    <script src="./js/utils.js?v=20260601"></script>
-    <script src="./js/themeSwitcher.js?v=20260601"></script>
-    <script src="./js/wifiHandler.js?v=20260601"></script>
-    <script src="./js/main.js?v=20260601"></script>
+    <link rel="stylesheet" href="./css/pico.min.css?v=20260602d" />
+    <link rel="stylesheet" href="./css/style.css?v=20260602d" />
+    <script src="./js/alpinejs.min.js?v=20260602d" defer></script>
+    <script src="./js/utils.js?v=20260602d"></script>
+    <script src="./js/wifiHandler.js?v=20260602d"></script>
+    <script src="./js/main.js?v=20260602d"></script>
   </head>
   <body>
-    <main class="container">
+    <main class="container app-shell">
       <header id="header-placeholder"></header>
 
-      <a href="./index.html" class="wifi-back-link">← Back to Home</a>
+      <a href="./index.html" class="back-link">← Back to Home</a>
 
       <section x-data="wifiHandler()" x-init="init()" class="wifi-section">
-        <h2>WiFi Configuration</h2>
+        <div class="page-hero">
+          <p class="eyebrow">Network</p>
+          <h2>WiFi Configuration</h2>
+          <p>Scan nearby networks, choose one, and save the connection.</p>
+        </div>
 
-        <div class="wifi-connect">
-          <h3>Connect</h3>
+        <article class="setting-card">
+          <header class="card-heading">
+            <div>
+              <p class="eyebrow">Connection</p>
+              <h3>Connect</h3>
+            </div>
+          </header>
           <form @submit.prevent="connect()">
             <label for="ssid">SSID</label>
             <input
@@ -88,14 +96,18 @@
             </div>
           </form>
           <p x-text="statusMsg"></p>
-        </div>
+        </article>
 
-        <div>
-          <button class="scan-btn" @click="scan()" x-bind:disabled="scanning">
-            Scan networks
-          </button>
-          <span x-show="scanning">Scanning...</span>
-          <div class="scan-table-container">
+        <article class="setting-card">
+          <header class="card-heading">
+            <div>
+              <p class="eyebrow">Scan</p>
+              <h3>Available Networks</h3>
+            </div>
+            <span class="status-pill" x-show="scanning">Scanning...</span>
+          </header>
+          <button @click="scan()" x-bind:disabled="scanning">Scan networks</button>
+          <div>
             <table class="wifi-table">
               <thead>
                 <tr>
@@ -127,7 +139,7 @@
               </tbody>
             </table>
           </div>
-        </div>
+        </article>
       </section>
 
       <footer id="footer-placeholder"></footer>

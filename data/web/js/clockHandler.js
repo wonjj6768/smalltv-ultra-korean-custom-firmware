@@ -146,7 +146,7 @@ function clockHandler() {
       if (this.kmaRegions.length) {
         return this.kmaRegions;
       }
-      const response = await fetch("./kma_regions.json?v=20260601b");
+      const response = await fetch("./kma_regions.json?v=20260602d");
       if (!response.ok) {
         throw new Error("region lookup failed");
       }
