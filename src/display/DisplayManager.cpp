@@ -839,8 +839,8 @@ static void lcdDrawClockInner() {
     constexpr int16_t CURRENT_IP_Y = 4;
     constexpr int16_t CURRENT_IP_WIDTH = 122;
     constexpr int16_t CURRENT_IP_HEIGHT = 10;
-    constexpr int16_t UPDATE_NOTICE_Y = 14;
-    constexpr int16_t UPDATE_NOTICE_HEIGHT = 10;
+    constexpr int16_t UPDATE_NOTICE_Y = 19;
+    constexpr int16_t UPDATE_NOTICE_HEIGHT = 15;
     if (g_currentIpCache != currentIpValue || g_updateAvailableCache != g_updateAvailable) {
         clockTarget->fillRect(CURRENT_IP_X, CURRENT_IP_Y, CURRENT_IP_WIDTH,
                               CURRENT_IP_HEIGHT + UPDATE_NOTICE_HEIGHT, LCD_BLACK);
