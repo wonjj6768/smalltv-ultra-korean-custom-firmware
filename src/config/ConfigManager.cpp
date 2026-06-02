@@ -74,14 +74,24 @@ static auto clampDisplayBrightness(int value) -> uint8_t {
     return static_cast<uint8_t>(value);
 }
 
-static auto clampMinuteOfDay(int value) -> uint16_t {
+static auto clampHourOfDay(int value) -> uint8_t {
+    if (value < 0) {
+        return 0;
+    }
+    if (value > 23) {
+        return 23;
+    }
+    return static_cast<uint8_t>(value);
+}
+
+static auto minuteOfDayToHour(int value) -> uint8_t {
     if (value < 0) {
         return 0;
     }
     if (value > 1439) {
-        return 1439;
+        value = 1439;
     }
-    return static_cast<uint16_t>(value);
+    return static_cast<uint8_t>(value / 60);
 }
 
 static auto timezoneRegionFromOffsetMinutes(int offsetMinutes) -> String {
@@ -186,10 +196,14 @@ auto ConfigManager::load() -> bool {
         doc["display_night_brightness_enabled"] | display_night_brightness_enabled;
     this->display_night_brightness =
         clampDisplayBrightness(doc["display_night_brightness"] | display_night_brightness);
-    this->display_night_start_minute =
-        clampMinuteOfDay(doc["display_night_start_minute"] | display_night_start_minute);
-    this->display_night_end_minute =
-        clampMinuteOfDay(doc["display_night_end_minute"] | display_night_end_minute);
+    this->display_night_start_hour = doc["display_night_start_hour"].is<int>()
+                                         ? clampHourOfDay(doc["display_night_start_hour"])
+                                         : minuteOfDayToHour(doc["display_night_start_minute"] |
+                                                             (display_night_start_hour * 60));
+    this->display_night_end_hour = doc["display_night_end_hour"].is<int>()
+                                       ? clampHourOfDay(doc["display_night_end_hour"])
+                                       : minuteOfDayToHour(doc["display_night_end_minute"] |
+                                                           (display_night_end_hour * 60));
     this->clock_enabled = clock_enabled_cfg;
     this->clock_use_24h = clock_use_24h_cfg;
     this->weather_enabled = weather_enabled_cfg;
@@ -346,16 +360,16 @@ auto ConfigManager::setDisplayNightBrightness(uint8_t brightnessPercent) -> void
     display_night_brightness = clampDisplayBrightness(brightnessPercent);
 }
 
-auto ConfigManager::getDisplayNightStartMinute() const -> uint16_t { return display_night_start_minute; }
+auto ConfigManager::getDisplayNightStartHour() const -> uint8_t { return display_night_start_hour; }
 
-auto ConfigManager::setDisplayNightStartMinute(uint16_t minuteOfDay) -> void {
-    display_night_start_minute = clampMinuteOfDay(minuteOfDay);
+auto ConfigManager::setDisplayNightStartHour(uint8_t hourOfDay) -> void {
+    display_night_start_hour = clampHourOfDay(hourOfDay);
 }
 
-auto ConfigManager::getDisplayNightEndMinute() const -> uint16_t { return display_night_end_minute; }
+auto ConfigManager::getDisplayNightEndHour() const -> uint8_t { return display_night_end_hour; }
 
-auto ConfigManager::setDisplayNightEndMinute(uint16_t minuteOfDay) -> void {
-    display_night_end_minute = clampMinuteOfDay(minuteOfDay);
+auto ConfigManager::setDisplayNightEndHour(uint8_t hourOfDay) -> void {
+    display_night_end_hour = clampHourOfDay(hourOfDay);
 }
 
 /**
@@ -404,8 +418,8 @@ auto ConfigManager::save() -> bool {
     doc["display_brightness"] = display_brightness;
     doc["display_night_brightness_enabled"] = display_night_brightness_enabled;
     doc["display_night_brightness"] = display_night_brightness;
-    doc["display_night_start_minute"] = display_night_start_minute;
-    doc["display_night_end_minute"] = display_night_end_minute;
+    doc["display_night_start_hour"] = display_night_start_hour;
+    doc["display_night_end_hour"] = display_night_end_hour;
     doc["clock_enabled"] = clock_enabled;
     doc["clock_use_24h"] = clock_use_24h;
     doc["weather_enabled"] = weather_enabled;

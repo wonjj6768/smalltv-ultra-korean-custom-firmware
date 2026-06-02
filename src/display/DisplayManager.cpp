@@ -60,7 +60,7 @@ static constexpr int WRAP_MAX_LINE_SLOTS = 10;
 static constexpr time_t CLOCK_REASONABLE_EPOCH = 1600000000UL;
 static constexpr uint32_t STARTUP_CLOCK_PAUSE_MS = 12000;
 static constexpr uint32_t TRANSIENT_CLOCK_PAUSE_MS = 5000;
-static constexpr uint32_t BRIGHTNESS_SCHEDULE_CHECK_MS = 30000;
+static constexpr uint32_t BRIGHTNESS_SCHEDULE_CHECK_FALLBACK_MS = 3600000;
 static constexpr int16_t CURRENT_WEATHER_ICON_Y = 0;
 static constexpr int16_t CURRENT_WEATHER_BADGE_SIZE = 22;
 static constexpr int16_t CURRENT_WEATHER_HEADER_TEXT_HEIGHT = 28;
@@ -166,23 +166,37 @@ static auto lcdIsNightBrightnessActive() -> bool {
         return false;
     }
 
-    const uint16_t currentMinute =
-        static_cast<uint16_t>((timeInfo->tm_hour * 60) + timeInfo->tm_min);
-    const uint16_t startMinute = configManager.getDisplayNightStartMinute();
-    const uint16_t endMinute = configManager.getDisplayNightEndMinute();
+    const uint8_t currentHour = static_cast<uint8_t>(timeInfo->tm_hour);
+    const uint8_t startHour = configManager.getDisplayNightStartHour();
+    const uint8_t endHour = configManager.getDisplayNightEndHour();
 
-    if (startMinute == endMinute) {
+    if (startHour == endHour) {
         return false;
     }
-    if (startMinute < endMinute) {
-        return currentMinute >= startMinute && currentMinute < endMinute;
+    if (startHour < endHour) {
+        return currentHour >= startHour && currentHour < endHour;
     }
-    return currentMinute >= startMinute || currentMinute < endMinute;
+    return currentHour >= startHour || currentHour < endHour;
 }
 
 static auto lcdConfiguredBrightness() -> uint8_t {
     return lcdIsNightBrightnessActive() ? configManager.getDisplayNightBrightness()
                                         : configManager.getDisplayBrightness();
+}
+
+static auto lcdBrightnessScheduleDelayMs() -> uint32_t {
+    const time_t now = lcdCurrentTimeNow();
+    if (now <= CLOCK_REASONABLE_EPOCH) {
+        return BRIGHTNESS_SCHEDULE_CHECK_FALLBACK_MS;
+    }
+
+    const tm* timeInfo = std::localtime(&now);
+    if (timeInfo == nullptr) {
+        return BRIGHTNESS_SCHEDULE_CHECK_FALLBACK_MS;
+    }
+
+    const int secondsUntilNextHour = ((59 - timeInfo->tm_min) * 60) + (60 - timeInfo->tm_sec);
+    return static_cast<uint32_t>(secondsUntilNextHour * 1000);
 }
 
 static void lcdEnsureClockTimeCanvas() {
@@ -2190,7 +2204,7 @@ auto DisplayManager::update() -> void {
     const unsigned long nowMs = millis();
     if (static_cast<long>(nowMs - g_nextBrightnessScheduleCheckMs) >= 0) {
         DisplayManager::applyConfiguredBrightness();
-        g_nextBrightnessScheduleCheckMs = millis() + BRIGHTNESS_SCHEDULE_CHECK_MS;
+        g_nextBrightnessScheduleCheckMs = millis() + lcdBrightnessScheduleDelayMs();
     }
 
     if (g_gif != nullptr) {

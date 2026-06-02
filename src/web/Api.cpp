@@ -970,8 +970,8 @@ void handleDisplayBrightnessGet(Webserver* webserver) {
     doc["max"] = 100;
     doc["night_enabled"] = configManager.isDisplayNightBrightnessEnabled();
     doc["night_brightness"] = configManager.getDisplayNightBrightness();
-    doc["night_start_minute"] = configManager.getDisplayNightStartMinute();
-    doc["night_end_minute"] = configManager.getDisplayNightEndMinute();
+    doc["night_start_hour"] = configManager.getDisplayNightStartHour();
+    doc["night_end_hour"] = configManager.getDisplayNightEndHour();
 
     String json;
     serializeJson(doc, json);
@@ -1033,27 +1033,27 @@ void handleDisplayBrightnessSet(Webserver* webserver) {
         nightBrightness = 100;
     }
 
-    int nightStartMinute = ddoc["night_start_minute"] | configManager.getDisplayNightStartMinute();
-    if (nightStartMinute < 0) {
-        nightStartMinute = 0;
+    int nightStartHour = ddoc["night_start_hour"] | configManager.getDisplayNightStartHour();
+    if (nightStartHour < 0) {
+        nightStartHour = 0;
     }
-    if (nightStartMinute > 1439) {
-        nightStartMinute = 1439;
+    if (nightStartHour > 23) {
+        nightStartHour = 23;
     }
 
-    int nightEndMinute = ddoc["night_end_minute"] | configManager.getDisplayNightEndMinute();
-    if (nightEndMinute < 0) {
-        nightEndMinute = 0;
+    int nightEndHour = ddoc["night_end_hour"] | configManager.getDisplayNightEndHour();
+    if (nightEndHour < 0) {
+        nightEndHour = 0;
     }
-    if (nightEndMinute > 1439) {
-        nightEndMinute = 1439;
+    if (nightEndHour > 23) {
+        nightEndHour = 23;
     }
 
     configManager.setDisplayBrightness(static_cast<uint8_t>(brightness));
     configManager.setDisplayNightBrightnessEnabled(ddoc["night_enabled"] | configManager.isDisplayNightBrightnessEnabled());
     configManager.setDisplayNightBrightness(static_cast<uint8_t>(nightBrightness));
-    configManager.setDisplayNightStartMinute(static_cast<uint16_t>(nightStartMinute));
-    configManager.setDisplayNightEndMinute(static_cast<uint16_t>(nightEndMinute));
+    configManager.setDisplayNightStartHour(static_cast<uint8_t>(nightStartHour));
+    configManager.setDisplayNightEndHour(static_cast<uint8_t>(nightEndHour));
     DisplayManager::applyConfiguredBrightness();
 
     if (!configManager.save()) {
@@ -1075,8 +1075,8 @@ void handleDisplayBrightnessSet(Webserver* webserver) {
     doc["brightness"] = configManager.getDisplayBrightness();
     doc["night_enabled"] = configManager.isDisplayNightBrightnessEnabled();
     doc["night_brightness"] = configManager.getDisplayNightBrightness();
-    doc["night_start_minute"] = configManager.getDisplayNightStartMinute();
-    doc["night_end_minute"] = configManager.getDisplayNightEndMinute();
+    doc["night_start_hour"] = configManager.getDisplayNightStartHour();
+    doc["night_end_hour"] = configManager.getDisplayNightEndHour();
 
     String json;
     serializeJson(doc, json);

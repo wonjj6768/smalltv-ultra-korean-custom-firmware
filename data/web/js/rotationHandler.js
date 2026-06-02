@@ -5,22 +5,23 @@ function rotationHandler() {
     brightness: 100,
     nightBrightnessEnabled: false,
     nightBrightness: 20,
-    nightStartTime: "22:00",
-    nightEndTime: "07:00",
+    nightStartHour: 22,
+    nightEndHour: 7,
     statusMsg: "",
 
-    minuteToTime(value) {
-      const minute = Math.max(0, Math.min(1439, Number(value) || 0));
-      const hour = Math.floor(minute / 60);
-      const min = minute % 60;
-      return `${String(hour).padStart(2, "0")}:${String(min).padStart(2, "0")}`;
+    hourOptions() {
+      return Array.from({ length: 24 }, (_, hour) => ({
+        value: hour,
+        label: `${String(hour).padStart(2, "0")}:00`,
+      }));
     },
 
-    timeToMinute(value) {
-      const parts = String(value || "00:00").split(":");
-      const hour = Math.max(0, Math.min(23, Number(parts[0]) || 0));
-      const minute = Math.max(0, Math.min(59, Number(parts[1]) || 0));
-      return hour * 60 + minute;
+    clampHour(value, fallback) {
+      const hour = Number(value);
+      if (!Number.isInteger(hour)) {
+        return fallback;
+      }
+      return Math.max(0, Math.min(23, hour));
     },
 
     fetchRotation() {
@@ -52,8 +53,8 @@ function rotationHandler() {
           this.nightBrightness = Number.isInteger(data.night_brightness)
             ? data.night_brightness
             : 20;
-          this.nightStartTime = this.minuteToTime(data.night_start_minute);
-          this.nightEndTime = this.minuteToTime(data.night_end_minute);
+          this.nightStartHour = this.clampHour(data.night_start_hour, 22);
+          this.nightEndHour = this.clampHour(data.night_end_hour, 7);
           this.statusMsg = "";
         })
         .catch((err) => {
@@ -76,8 +77,8 @@ function rotationHandler() {
         brightness: value,
         night_enabled: !!this.nightBrightnessEnabled,
         night_brightness: nightValue,
-        night_start_minute: this.timeToMinute(this.nightStartTime),
-        night_end_minute: this.timeToMinute(this.nightEndTime),
+        night_start_hour: this.clampHour(this.nightStartHour, 22),
+        night_end_hour: this.clampHour(this.nightEndHour, 7),
       };
 
       apiFetch("/api/v1/display/brightness", {
@@ -95,8 +96,8 @@ function rotationHandler() {
             this.nightBrightness = Number.isInteger(data.night_brightness)
               ? data.night_brightness
               : nightValue;
-            this.nightStartTime = this.minuteToTime(data.night_start_minute);
-            this.nightEndTime = this.minuteToTime(data.night_end_minute);
+            this.nightStartHour = this.clampHour(data.night_start_hour, 22);
+            this.nightEndHour = this.clampHour(data.night_end_hour, 7);
             this.statusMsg = "Brightness updated";
           } else {
             this.statusMsg = data.message || "Failed to save brightness";

@@ -30,10 +30,10 @@ class ConfigManager {
     auto setDisplayNightBrightnessEnabled(bool enabled) -> void { display_night_brightness_enabled = enabled; }
     auto getDisplayNightBrightness() const -> uint8_t { return display_night_brightness; }
     auto setDisplayNightBrightness(uint8_t brightness) -> void { display_night_brightness = brightness; }
-    auto getDisplayNightStartMinute() const -> uint16_t { return display_night_start_minute; }
-    auto setDisplayNightStartMinute(uint16_t minute) -> void { display_night_start_minute = minute; }
-    auto getDisplayNightEndMinute() const -> uint16_t { return display_night_end_minute; }
-    auto setDisplayNightEndMinute(uint16_t minute) -> void { display_night_end_minute = minute; }
+    auto getDisplayNightStartHour() const -> uint8_t { return display_night_start_hour; }
+    auto setDisplayNightStartHour(uint8_t hour) -> void { display_night_start_hour = hour; }
+    auto getDisplayNightEndHour() const -> uint8_t { return display_night_end_hour; }
+    auto setDisplayNightEndHour(uint8_t hour) -> void { display_night_end_hour = hour; }
     auto isClockEnabled() const -> bool { return clock_enabled; }
     auto setClockEnabled(bool enabled) -> void { clock_enabled = enabled; }
     auto isClockUse24Hour() const -> bool { return clock_use_24h; }
@@ -56,8 +56,8 @@ class ConfigManager {
     uint8_t display_brightness = 100;
     bool display_night_brightness_enabled = false;
     uint8_t display_night_brightness = 20;
-    uint16_t display_night_start_minute = 22 * 60;
-    uint16_t display_night_end_minute = 7 * 60;
+    uint8_t display_night_start_hour = 22;
+    uint8_t display_night_end_hour = 7;
     bool clock_enabled = true;
     bool clock_use_24h = true;
     bool weather_enabled = true;

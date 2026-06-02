@@ -55,10 +55,10 @@ class ConfigManager {
     void setDisplayNightBrightnessEnabled(bool enabled);
     uint8_t getDisplayNightBrightness() const;
     void setDisplayNightBrightness(uint8_t brightnessPercent);
-    uint16_t getDisplayNightStartMinute() const;
-    void setDisplayNightStartMinute(uint16_t minuteOfDay);
-    uint16_t getDisplayNightEndMinute() const;
-    void setDisplayNightEndMinute(uint16_t minuteOfDay);
+    uint8_t getDisplayNightStartHour() const;
+    void setDisplayNightStartHour(uint8_t hourOfDay);
+    uint8_t getDisplayNightEndHour() const;
+    void setDisplayNightEndHour(uint8_t hourOfDay);
     bool isClockEnabled() const;
     void setClockEnabled(bool enabled);
     bool isClockUse24Hour() const;
@@ -95,8 +95,8 @@ class ConfigManager {
     uint8_t display_brightness = 100;
     bool display_night_brightness_enabled = false;
     uint8_t display_night_brightness = 20;
-    uint16_t display_night_start_minute = 22 * 60;
-    uint16_t display_night_end_minute = 7 * 60;
+    uint8_t display_night_start_hour = 22;
+    uint8_t display_night_end_hour = 7;
     bool clock_enabled = true;
     bool clock_use_24h = true;
     bool weather_enabled = true;
