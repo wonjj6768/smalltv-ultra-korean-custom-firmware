@@ -32,6 +32,19 @@ function otaUploadHandler() {
       await this.checkLatestRelease();
     },
 
+    async setDeviceUpdateAvailable(available) {
+      this.updateAvailable = available;
+      try {
+        await apiFetch("/api/v1/system/update-available", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ available }),
+        });
+      } catch (err) {
+        console.error(err);
+      }
+    },
+
     async checkLatestRelease() {
       this.checking = true;
       this.updateMessage = "Checking latest release...";
@@ -45,6 +58,7 @@ function otaUploadHandler() {
           headers: { Accept: "application/vnd.github+json" },
         });
         if (!releaseResp.ok) {
+          await this.setDeviceUpdateAvailable(false);
           this.updateMessage = "No GitHub release found yet.";
           return;
         }
@@ -56,10 +70,11 @@ function otaUploadHandler() {
           firmware: this.findAsset(release, "firmware.bin"),
           fs: this.findAsset(release, "littlefs.bin"),
         };
-        this.updateAvailable = !this.isSameOrNewer(
+        const hasUpdate = !this.isSameOrNewer(
           this.currentVersion,
           this.latestVersion,
         );
+        await this.setDeviceUpdateAvailable(hasUpdate);
 
         if (!this.latestAssets.firmware || !this.latestAssets.fs) {
           this.updateMessage =
@@ -71,6 +86,7 @@ function otaUploadHandler() {
           ? "Update available. Apply firmware first, then LittleFS."
           : "Already on this release or a newer development build.";
       } catch (err) {
+        await this.setDeviceUpdateAvailable(false);
         this.updateMessage = "Failed to check update";
         console.error(err);
       } finally {

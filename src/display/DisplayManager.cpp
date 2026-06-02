@@ -85,6 +85,8 @@ static std::array<String, 4> g_weatherForecastCache{};
 static int g_currentWeatherIconCache = -999;
 static std::array<int, 4> g_forecastWeatherIconCache = {-999, -999, -999, -999};
 static String g_currentIpCache;
+static bool g_updateAvailable = false;
+static bool g_updateAvailableCache = false;
 static bool g_currentUmbrellaBadgeCache = false;
 static String g_waitLine1Cache;
 static String g_waitLine2Cache;
@@ -267,6 +269,7 @@ static void lcdResetClockLayoutCache() {
     g_clockSecondsCanvasCache[0] = '\0';
     g_currentWeatherIconCache = -999;
     g_currentIpCache = "";
+    g_updateAvailableCache = false;
     g_currentUmbrellaBadgeCache = false;
     g_forecastWeatherIconCache.fill(-999);
     for (auto& line : g_weatherForecastCache) {
@@ -835,14 +838,22 @@ static void lcdDrawClockInner() {
     constexpr int16_t CURRENT_IP_X = 8;
     constexpr int16_t CURRENT_IP_Y = 4;
     constexpr int16_t CURRENT_IP_WIDTH = 122;
-    constexpr int16_t CURRENT_IP_HEIGHT = 12;
-    if (g_currentIpCache != currentIpValue) {
-        clockTarget->fillRect(CURRENT_IP_X, CURRENT_IP_Y, CURRENT_IP_WIDTH, CURRENT_IP_HEIGHT, LCD_BLACK);
+    constexpr int16_t CURRENT_IP_HEIGHT = 10;
+    constexpr int16_t UPDATE_NOTICE_Y = 14;
+    constexpr int16_t UPDATE_NOTICE_HEIGHT = 10;
+    if (g_currentIpCache != currentIpValue || g_updateAvailableCache != g_updateAvailable) {
+        clockTarget->fillRect(CURRENT_IP_X, CURRENT_IP_Y, CURRENT_IP_WIDTH,
+                              CURRENT_IP_HEIGHT + UPDATE_NOTICE_HEIGHT, LCD_BLACK);
         if (!currentIpValue.isEmpty()) {
             const String trimmedIp = lcdTrimTextToWidth(clockTarget, currentIpValue, 1, CURRENT_IP_WIDTH);
             lcdDrawTextAt(clockTarget, CURRENT_IP_X, CURRENT_IP_Y, trimmedIp, 1, lcdClockIpTextColor(), LCD_BLACK);
         }
+        if (g_updateAvailable) {
+            lcdDrawTextAt(clockTarget, CURRENT_IP_X, UPDATE_NOTICE_Y, String(F("업데이트있음")), 1,
+                          lcdClockIpTextColor(), LCD_BLACK);
+        }
         g_currentIpCache = currentIpValue;
+        g_updateAvailableCache = g_updateAvailable;
     }
 
     String primaryTime = scene.clockPrimary.empty() ? lcdString(scene.clockTime) : lcdString(scene.clockPrimary);
@@ -1519,6 +1530,15 @@ static constexpr uint8_t ST7789_ADDR_END_LOW = 0xEF;
  * @return Pointer to the Arduino_GFX instance
  */
 auto DisplayManager::getGfx() -> Arduino_GFX* { return &g_lcd; }
+
+void DisplayManager::setUpdateAvailable(bool available) {
+    if (g_updateAvailable == available) {
+        return;
+    }
+
+    g_updateAvailable = available;
+    g_updateAvailableCache = !available;
+}
 
 /**
  * @brief Turn the LCD backlight on

@@ -38,6 +38,7 @@ class DisplayManager {
     static void setRotation(uint8_t rotation, String currentIP);
     static void setBrightness(uint8_t brightnessPercent);
     static void applyConfiguredBrightness();
+    static void setUpdateAvailable(bool available);
     static Arduino_GFX* getGfx();
     static void drawStartup(String currentIP);
     static void drawClock();

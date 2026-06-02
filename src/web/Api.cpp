@@ -232,6 +232,9 @@ void registerApiEndpoints(Webserver* webserver) {
     // responses=200:application/json,401:application/json
     webserver->raw().on("/api/v1/system/version", HTTP_GET, [webserver]() { handleSystemVersion(webserver); });
 
+    webserver->raw().on("/api/v1/system/update-available", HTTP_POST,
+                        [webserver]() { handleSystemUpdateAvailableSet(webserver); });
+
     // @openapi {post} /ota/fw version=v1 group=OTA summary="Upload firmware (OTA)" requiresAuth=true
     // requestBody=multipart/form-data responses=200:application/json,401:application/json
     webserver->raw().on(
@@ -680,6 +683,28 @@ void handleSystemVersion(Webserver* webserver) {
     doc["repo"] = "wonjj6768/smalltv-ultra-korean-custom-firmware";
     doc["latest_release_api"] =
         "https://api.github.com/repos/wonjj6768/smalltv-ultra-korean-custom-firmware/releases/latest";
+
+    String json;
+    serializeJson(doc, json);
+
+    setCorsHeaders(webserver);
+    webserver->raw().send(HTTP_CODE_OK, "application/json", json);
+}
+
+void handleSystemUpdateAvailableSet(Webserver* webserver) {
+    if (!requireBearerToken(webserver)) {
+        return;
+    }
+
+    String body = webserver->raw().arg("plain");
+    JsonDocument request;
+    DeserializationError error = deserializeJson(request, body);
+    const bool available = !error && (request["available"] | false);
+    DisplayManager::setUpdateAvailable(available);
+
+    JsonDocument doc;
+    doc["status"] = "ok";
+    doc["available"] = available;
 
     String json;
     serializeJson(doc, json);

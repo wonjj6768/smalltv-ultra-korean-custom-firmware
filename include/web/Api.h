@@ -29,6 +29,7 @@ void handleOtaFinished(Webserver* webserver);
 void handleReboot(Webserver* webserver);
 void handleFactoryReset(Webserver* webserver);
 void handleSystemVersion(Webserver* webserver);
+void handleSystemUpdateAvailableSet(Webserver* webserver);
 void handleOtaStatus(Webserver* webserver);
 void handleOtaCancel(Webserver* webserver);
 
