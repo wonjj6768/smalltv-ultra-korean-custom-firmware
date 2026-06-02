@@ -1,12 +1,31 @@
 :root {
-  --ui-bg: #f4f1ea;
-  --ui-card: #fffaf1;
-  --ui-soft: #eee7dc;
-  --ui-border: #d6cabc;
-  --ui-text: #211c17;
-  --ui-muted: #756a5f;
-  --ui-accent: #1d6b5f;
-  --ui-danger: #8d2f25;
+  --ui-bg: #fff;
+  --ui-card: #fff;
+  --ui-soft: #f5f5f5;
+  --ui-border: #ddd;
+  --ui-text: #111;
+  --ui-muted: #666;
+  --pico-primary: #111;
+  --pico-primary-background: #111;
+  --pico-primary-border: #111;
+  --pico-primary-hover: #000;
+  --pico-primary-hover-background: #000;
+  --pico-primary-hover-border: #000;
+  --pico-secondary: #555;
+  --pico-secondary-background: #555;
+  --pico-secondary-border: #555;
+  --pico-secondary-hover: #333;
+  --pico-secondary-hover-background: #333;
+  --pico-secondary-hover-border: #333;
+  --pico-contrast: #111;
+  --pico-contrast-background: #111;
+  --pico-contrast-border: #111;
+  --pico-form-element-active-border-color: #777;
+  --pico-form-element-focus-color: #777;
+  --pico-switch-checked-background-color: #111;
+  --pico-range-thumb-color: #111;
+  --pico-range-thumb-active-color: #000;
+  --pico-progress-color: #111;
 }
 
 html,
@@ -50,7 +69,7 @@ footer {
 }
 
 a {
-  color: var(--ui-accent);
+  color: inherit;
 }
 
 .back-link {
@@ -90,10 +109,11 @@ a {
 
 .eyebrow {
   margin-bottom: 0.2rem;
-  color: var(--ui-accent);
+  color: var(--ui-muted);
   font-size: 0.76rem;
   font-weight: 700;
   letter-spacing: 0.02em;
+  text-transform: uppercase;
 }
 
 .settings-grid,
@@ -223,7 +243,7 @@ a {
 
 .nav-card span {
   display: block;
-  color: var(--ui-accent);
+  color: var(--ui-muted);
   font-weight: 700;
 }
 
@@ -231,14 +251,6 @@ a {
   display: block;
   margin-top: 0.15rem;
   font-size: 0.95rem;
-}
-
-.danger-card {
-  border-color: #d8b9b3;
-}
-
-.danger-card .eyebrow {
-  color: var(--ui-danger);
 }
 
 .wifi-table {
@@ -285,15 +297,15 @@ a {
   padding: 0.75rem;
   border: 1px solid var(--ui-border);
   border-radius: 0.45rem;
-  background: #151515;
-  color: #e9e0d2;
+  background: var(--ui-soft);
+  color: var(--ui-text);
   font-family: monospace;
   font-size: 0.84rem;
 }
 
 .log-line {
   padding: 0.16rem 0;
-  border-bottom: 1px solid #333;
+  border-bottom: 1px solid var(--ui-border);
   white-space: pre-wrap;
   word-break: break-all;
 }
@@ -319,7 +331,7 @@ a {
 }
 
 .danger-action {
-  color: var(--ui-danger);
+  color: inherit;
 }
 
 @media (max-width: 760px) {
