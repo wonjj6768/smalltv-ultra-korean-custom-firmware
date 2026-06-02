@@ -20,6 +20,12 @@
           <p class="eyebrow">Update</p>
           <h2>Firmware / LittleFS</h2>
           <p>Check GitHub releases, then apply firmware and LittleFS manually.</p>
+          <p class="notice-text">
+            Keep this browser tab open during update. The browser downloads the
+            release file and uploads it to the device.<br />
+            업데이트 중에는 이 브라우저 탭을 닫지 마세요. 브라우저가 릴리즈
+            파일을 다운로드한 뒤 기기에 업로드합니다.
+          </p>
         </div>
 
         <article class="setting-card">
@@ -46,12 +52,22 @@
           </div>
 
           <p x-text="updateMessage"></p>
+          <template x-if="downloadMessage">
+            <div class="upload-progress">
+              <label x-text="downloadMessage"></label>
+              <progress max="100" :value="downloadProgress"></progress>
+              <div class="upload-progress-row">
+                <div><strong x-text="downloadProgress + '%'"></strong></div>
+                <div x-text="downloadEtaText"></div>
+              </div>
+            </div>
+          </template>
 
           <div class="action-row">
             <button
               type="button"
               @click="checkLatestRelease()"
-              x-bind:disabled="checking || uploading"
+              x-bind:disabled="checking || uploading || downloading"
             >
               Check Update
             </button>
@@ -59,7 +75,7 @@
               type="button"
               class="primary"
               @click="applyReleaseAsset('firmware')"
-              x-bind:disabled="uploading || !latestAssets.firmware"
+              x-bind:disabled="uploading || downloading || !latestAssets.firmware"
             >
               Apply Firmware
             </button>
@@ -67,7 +83,7 @@
               type="button"
               class="primary"
               @click="applyReleaseAsset('fs')"
-              x-bind:disabled="uploading || !latestAssets.fs"
+              x-bind:disabled="uploading || downloading || !latestAssets.fs"
             >
               Apply LittleFS
             </button>
@@ -90,12 +106,18 @@
             </div>
           </header>
           <form @submit.prevent="uploadFile">
-            <input type="file" x-ref="fileInput" required accept=".bin" />
-            <select x-model="uploadType">
+            <input
+              type="file"
+              x-ref="fileInput"
+              required
+              accept=".bin"
+              x-bind:disabled="uploading || downloading"
+            />
+            <select x-model="uploadType" x-bind:disabled="uploading || downloading">
               <option value="firmware">Firmware</option>
               <option value="fs">LittleFS (html/js/css/config)</option>
             </select>
-            <button type="submit" x-bind:disabled="uploading">Upload</button>
+            <button type="submit" x-bind:disabled="uploading || downloading">Upload</button>
           </form>
           <template x-if="uploading">
             <div class="upload-progress">

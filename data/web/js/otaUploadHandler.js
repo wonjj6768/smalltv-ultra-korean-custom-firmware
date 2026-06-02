@@ -4,13 +4,18 @@ function otaUploadHandler() {
 
   return {
     uploading: false,
+    downloading: false,
     checking: false,
     uploadMessage: "",
     updateMessage: "",
     uploadType: "firmware",
     progress: 0,
     etaText: "",
+    downloadProgress: 0,
+    downloadEtaText: "",
+    downloadMessage: "",
     xhr: null,
+    downloadXhr: null,
     currentVersion: "",
     latestVersion: "",
     latestUrl: "",
@@ -29,6 +34,13 @@ function otaUploadHandler() {
     },
 
     async init() {
+      window.addEventListener("beforeunload", (event) => {
+        if (!this.uploading && !this.downloading) {
+          return;
+        }
+        event.preventDefault();
+        event.returnValue = "";
+      });
       await this.checkLatestRelease();
     },
 
@@ -120,31 +132,83 @@ function otaUploadHandler() {
       }
 
       const endpoint = kind === "firmware" ? "/api/v1/ota/fw" : "/api/v1/ota/fs";
-      this.uploadMessage = "Downloading " + asset.name + "...";
+      this.uploadMessage = "";
+      this.downloadMessage = "Downloading " + asset.name + "... Keep this tab open.";
 
       try {
-        const response = await fetch(asset.browser_download_url);
-        if (!response.ok) {
-          this.uploadMessage =
-            "Download failed. Open the release link and upload the file manually.";
-          return;
-        }
-
-        const blob = await response.blob();
+        const blob = await this.downloadReleaseAsset(asset);
         const file = new File([blob], asset.name, {
           type: "application/octet-stream",
         });
+        this.downloadMessage = "Download finished. Uploading to device...";
         await this.uploadBlob(file, endpoint);
       } catch (err) {
         this.uploadMessage =
           "Browser could not download the release asset. Use the release link below.";
+        this.downloadMessage = "Download failed.";
+        this.downloadXhr = null;
         console.error(err);
       }
     },
 
+    async downloadReleaseAsset(asset) {
+      this.downloading = true;
+      this.downloadProgress = 0;
+      this.downloadEtaText = "";
+
+      return new Promise((resolve, reject) => {
+        const xhr = new XMLHttpRequest();
+        const startTime = Date.now();
+        this.downloadXhr = xhr;
+
+        xhr.responseType = "blob";
+        xhr.onprogress = (e) => {
+          if (e.lengthComputable) {
+            const percent = Math.round((e.loaded / e.total) * 100);
+            this.downloadProgress = percent;
+            const elapsed = (Date.now() - startTime) / 1000;
+            const rate = e.loaded / Math.max(elapsed, 0.001);
+            const remaining = e.total - e.loaded;
+            this.downloadEtaText =
+              rate > 0 ? "ETA: " + Math.round(remaining / rate) + "s" : "";
+          } else {
+            this.downloadProgress = Math.min(99, this.downloadProgress + 1);
+            this.downloadEtaText = "Downloading...";
+          }
+        };
+
+        xhr.onload = () => {
+          this.downloadXhr = null;
+          this.downloading = false;
+          if (xhr.status >= 200 && xhr.status < 300) {
+            this.downloadProgress = 100;
+            this.downloadEtaText = "";
+            resolve(xhr.response);
+            return;
+          }
+          reject(new Error("Download failed: " + xhr.status));
+        };
+
+        xhr.onerror = () => {
+          this.downloadXhr = null;
+          this.downloading = false;
+          reject(new Error("Download error"));
+        };
+
+        xhr.onabort = () => {
+          this.downloadXhr = null;
+          this.downloading = false;
+          reject(new Error("Download canceled"));
+        };
+
+        xhr.open("GET", asset.browser_download_url);
+        xhr.send();
+      });
+    },
+
     async uploadBlob(file, endpoint) {
       this.uploading = true;
-      this.uploadMessage = "";
+      this.uploadMessage = "Uploading " + file.name + " to device... Keep this tab open.";
       this.progress = 0;
       this.etaText = "";
 
@@ -202,6 +266,14 @@ function otaUploadHandler() {
     },
 
     async cancelUpload() {
+      if (this.downloadXhr) {
+        try {
+          this.downloadXhr.abort();
+        } catch (e) {
+          // ignore
+        }
+      }
+
       if (this.xhr) {
         try {
           this.xhr.abort();
@@ -216,8 +288,11 @@ function otaUploadHandler() {
         // ignore
       }
       this.uploading = false;
+      this.downloading = false;
       this.progress = 0;
       this.etaText = "";
+      this.downloadProgress = 0;
+      this.downloadEtaText = "";
     },
   };
 }
