@@ -12,6 +12,7 @@ function clockHandler() {
     locationName: "서울시",
     kmaApiKey: "",
     kmaKeyStatus: "",
+    kmaValidationStatus: "",
     regionResults: [],
     selectedRegionResult: "",
     regionStatus: "",
@@ -257,6 +258,91 @@ function clockHandler() {
       }
     },
 
+    async validateKmaKey(options = {}) {
+      const silent = !!options.silent;
+      if (!silent) {
+        this.loading = true;
+      }
+      this.kmaValidationStatus = "Validating KMA APIHub key...";
+
+      try {
+        if (this.kmaApiKey.trim()) {
+          await this.saveWeatherConfig();
+        }
+
+        await apiFetch("/api/v1/weather/refresh", { method: "POST" });
+        for (let attempt = 0; attempt < 15; attempt += 1) {
+          await new Promise((resolve) => setTimeout(resolve, 5000));
+          await this.fetchWeatherStatus();
+          const status = (this.weatherStatus || "").toLowerCase();
+          if (status === "ok" && this.currentSummary) {
+            this.kmaValidationStatus = "KMA APIHub key is valid.";
+            return true;
+          }
+          if (
+            status.includes("missing") ||
+            status.includes("failed") ||
+            status.includes("error") ||
+            status.includes("parse")
+          ) {
+            this.kmaValidationStatus = "KMA APIHub validation failed: " + this.weatherStatus;
+            return false;
+          }
+        }
+
+        this.kmaValidationStatus = "KMA APIHub validation timed out.";
+        return false;
+      } catch (err) {
+        this.kmaValidationStatus = "KMA APIHub key validation failed.";
+        console.error(err);
+        return false;
+      } finally {
+        if (!silent) {
+          this.loading = false;
+        }
+      }
+    },
+
+    async saveWeatherConfig() {
+      if (this.weatherEnabled) {
+        await this.syncTypedRegion();
+      }
+
+      const weatherResponse = await apiFetch("/api/v1/weather/config", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          enabled: this.weatherEnabled,
+          latitude: Number(this.latitude),
+          longitude: Number(this.longitude),
+          kma_grid_x: Number(this.kmaGridX),
+          kma_grid_y: Number(this.kmaGridY),
+          timezone: (this.timezone || "Asia/Seoul").trim(),
+          location_name: this.toCityLevelLabel(this.locationName),
+          ...(this.kmaApiKey.trim()
+            ? { kma_api_key: this.kmaApiKey.trim() }
+            : {}),
+        }),
+      });
+      const weatherData = await weatherResponse.json();
+      if (weatherData.status !== "ok") {
+        throw new Error(weatherData.message || "weather save failed");
+      }
+
+      this.weatherEnabled = !!weatherData.enabled;
+      this.latitude = Number(weatherData.latitude || 0);
+      this.longitude = Number(weatherData.longitude || 0);
+      this.kmaGridX = Number(weatherData.kma_grid_x || this.kmaGridX || 60);
+      this.kmaGridY = Number(weatherData.kma_grid_y || this.kmaGridY || 127);
+      this.timezone = weatherData.timezone || "Asia/Seoul";
+      this.kmaApiKey = "";
+      this.kmaKeyStatus = weatherData.kma_api_key_set
+        ? "KMA APIHub key is saved."
+        : "Required for KMA APIHub weather.";
+      this.locationName = this.toCityLevelLabel(weatherData.location_name || this.locationName);
+      return weatherData;
+    },
+
     async saveSettings() {
       this.loading = true;
       try {
@@ -273,44 +359,10 @@ function clockHandler() {
           throw new Error(clockData.message || "clock save failed");
         }
 
-        if (this.weatherEnabled) {
-          await this.syncTypedRegion();
-        }
-
-        const weatherResponse = await apiFetch("/api/v1/weather/config", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            enabled: this.weatherEnabled,
-            latitude: Number(this.latitude),
-            longitude: Number(this.longitude),
-            kma_grid_x: Number(this.kmaGridX),
-            kma_grid_y: Number(this.kmaGridY),
-            timezone: (this.timezone || "Asia/Seoul").trim(),
-            location_name: this.toCityLevelLabel(this.locationName),
-            ...(this.kmaApiKey.trim()
-              ? { kma_api_key: this.kmaApiKey.trim() }
-              : {}),
-          }),
-        });
-        const weatherData = await weatherResponse.json();
-        if (weatherData.status !== "ok") {
-          throw new Error(weatherData.message || "weather save failed");
-        }
+        await this.saveWeatherConfig();
 
         this.enabled = !!clockData.enabled;
         this.use24h = clockData.use24h !== false;
-        this.weatherEnabled = !!weatherData.enabled;
-        this.latitude = Number(weatherData.latitude || 0);
-        this.longitude = Number(weatherData.longitude || 0);
-        this.kmaGridX = Number(weatherData.kma_grid_x || this.kmaGridX || 60);
-        this.kmaGridY = Number(weatherData.kma_grid_y || this.kmaGridY || 127);
-        this.timezone = weatherData.timezone || "Asia/Seoul";
-        this.kmaApiKey = "";
-        this.kmaKeyStatus = weatherData.kma_api_key_set
-          ? "KMA APIHub key is saved."
-          : "Required for KMA APIHub weather.";
-        this.locationName = this.toCityLevelLabel(weatherData.location_name || this.locationName);
         this.statusMsg = "Dashboard settings updated";
         await this.fetchWeatherStatus();
       } catch (err) {

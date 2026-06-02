@@ -164,14 +164,25 @@
             <small>Use <code>Asia/Seoul</code> for Korea.</small>
 
             <label for="weather-kma-key">KMA APIHub Key</label>
-            <input
-              id="weather-kma-key"
-              type="password"
-              x-model="kmaApiKey"
-              x-bind:disabled="loading || !weatherEnabled"
-              placeholder="Leave blank to keep the saved key."
-            />
+            <div class="field-with-actions">
+              <input
+                id="weather-kma-key"
+                type="password"
+                x-model="kmaApiKey"
+                x-bind:disabled="loading || !weatherEnabled"
+                placeholder="Leave blank to keep the saved key."
+              />
+              <button
+                type="button"
+                class="secondary"
+                @click="validateKmaKey()"
+                x-bind:disabled="loading || !weatherEnabled"
+              >
+                Validate
+              </button>
+            </div>
             <small x-text="kmaKeyStatus"></small>
+            <small x-text="kmaValidationStatus"></small>
             <small>
               Get your authKey from
               <a
