@@ -61,5 +61,6 @@ void handleWeatherConfigGet(Webserver* webserver);
 void handleWeatherConfigSet(Webserver* webserver);
 void handleWeatherStatusGet(Webserver* webserver);
 void handleWeatherRefresh(Webserver* webserver);
+void handleWeatherValidateKey(Webserver* webserver);
 
 #endif  // API_H

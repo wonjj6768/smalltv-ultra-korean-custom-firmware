@@ -309,53 +309,24 @@ function clockHandler() {
           return false;
         }
 
-        await apiFetch("/api/v1/weather/refresh", { method: "POST" });
-        this.setKmaValidationResult("working", "KMA APIHub refresh requested.", [
-          "Waiting for the device weather cache to update.",
-        ]);
-
-        for (let attempt = 0; attempt < 15; attempt += 1) {
-          await new Promise((resolve) => setTimeout(resolve, 5000));
-          const hasStatus = await this.fetchWeatherStatus({ timeoutMs: 5000 });
-          if (!hasStatus) {
-            this.setKmaValidationResult("working", "Waiting for device weather status.", [
-              `Attempt ${attempt + 1}/15: weather status did not respond yet.`,
-            ]);
-            continue;
-          }
-          const status = (this.weatherStatus || "").toLowerCase();
-          if (status === "ok" && this.currentSummary) {
-            this.setKmaValidationResult("success", "KMA APIHub key is valid.", [
-              `Device status: ${this.weatherStatus}`,
-              `Current: ${this.currentSummary}`,
-              `Forecast rows: ${this.forecastSummary.length}`,
-            ]);
-            return true;
-          }
-          if (
-            status.includes("missing") ||
-            status.includes("failed") ||
-            status.includes("error") ||
-            status.includes("parse") ||
-            status.includes("unavailable")
-          ) {
-            this.setKmaValidationResult("error", "KMA APIHub validation failed.", [
-              `Device status: ${this.weatherStatus}`,
-              this.currentSummary ? `Cached current: ${this.currentSummary}` : "",
-              "Check the key, device WiFi internet access, and KMA APIHub service state.",
-            ]);
-            return false;
-          }
-
-          this.setKmaValidationResult("working", "Waiting for KMA APIHub result.", [
-            `Attempt ${attempt + 1}/15`,
-            `Device status: ${this.weatherStatus || "unknown"}`,
+        const response = await apiFetch("/api/v1/weather/validate-key", { method: "POST" });
+        const data = await response.json();
+        if (data.valid) {
+          this.setKmaValidationResult("success", "KMA APIHub key is valid.", [
+            `Test region: ${data.region || "서울시"} (${data.nx}, ${data.ny})`,
+            `Base time: ${data.base_date || ""} ${data.base_time || ""}`,
+            `KMA result: ${data.result_code || ""} ${data.result_msg || "NORMAL_SERVICE"}`,
           ]);
+          return true;
         }
 
-        this.setKmaValidationResult("error", "KMA APIHub validation timed out.", [
-          "The key was saved, but the device did not report a successful weather update in time.",
-          `Last device status: ${this.weatherStatus || "unknown"}`,
+        this.setKmaValidationResult("error", "KMA APIHub key validation failed.", [
+          data.message || "KMA validation failed.",
+          `Test region: ${data.region || "서울시"}`,
+          data.result_code || data.result_msg
+            ? `KMA result: ${data.result_code || ""} ${data.result_msg || ""}`
+            : "",
+          data.http_status ? `HTTP: ${data.http_status}` : "",
         ]);
         return false;
       } catch (err) {

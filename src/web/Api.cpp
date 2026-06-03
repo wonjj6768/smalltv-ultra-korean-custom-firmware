@@ -20,8 +20,11 @@
 #include <Arduino.h>
 #include <Logger.h>
 #include <ArduinoJson.h>
+#include <ESP8266WiFi.h>
 #include <LittleFS.h>
 #include <Updater.h>
+#include <WiFiClient.h>
+#include <time.h>
 
 #include "web/Webserver.h"
 #include "web/Api.h"
@@ -62,6 +65,10 @@ void handleDeleteGif(Webserver* webserver);
 static constexpr int WIFI_CONNECT_TIMEOUT_MS = 15000;
 static constexpr size_t NTP_CONFIG_DOC_SIZE = 512;
 static constexpr const char* DEFAULT_NTP_SERVER = "pool.ntp.org";
+static constexpr const char* KMA_VALIDATE_HOST = "apihub.kma.go.kr";
+static constexpr uint16_t KMA_VALIDATE_PORT = 80;
+static constexpr int KMA_VALIDATE_SEOUL_X = 60;
+static constexpr int KMA_VALIDATE_SEOUL_Y = 127;
 
 static void sendJsonContent(Webserver* webserver, const char* content) { webserver->raw().sendContent(content); }
 
@@ -193,6 +200,9 @@ void registerApiEndpoints(Webserver* webserver) {
 
     // @openapi {post} /weather/refresh version=v1 group=Weather summary="Refresh weather data now" requiresAuth=true
     webserver->raw().on("/api/v1/weather/refresh", HTTP_POST, [webserver]() { handleWeatherRefresh(webserver); });
+
+    webserver->raw().on("/api/v1/weather/validate-key", HTTP_POST,
+                        [webserver]() { handleWeatherValidateKey(webserver); });
     // @openapi {get} /display/rotation version=v1 group=Display summary="Get display rotation" requiresAuth=true
     // responses=200:application/json,401:application/json
     webserver->raw().on("/api/v1/display/rotation", HTTP_GET, [webserver]() { handleDisplayRotationGet(webserver); });
@@ -1135,6 +1145,115 @@ void handleDisplayBrightnessSet(Webserver* webserver) {
     Logger::info(("Display brightness updated to " + String(configManager.getDisplayBrightness())).c_str(), "API");
 }
 
+static auto kmaValidateDateTime(String& baseDate, String& baseTime) -> bool {
+    time_t now = time(nullptr);
+    if (now < 1700000000L) {
+        return false;
+    }
+
+    now += 9L * 60L * 60L;
+    tm* timeInfo = gmtime(&now);
+    if (timeInfo == nullptr) {
+        return false;
+    }
+
+    tm base = *timeInfo;
+    if (base.tm_min < 40) {
+        now -= 60L * 60L;
+        timeInfo = gmtime(&now);
+        if (timeInfo == nullptr) {
+            return false;
+        }
+        base = *timeInfo;
+    }
+
+    char dateBuffer[40] = {};
+    char timeBuffer[16] = {};
+    snprintf(dateBuffer, sizeof(dateBuffer), "%04d%02d%02d", base.tm_year + 1900, base.tm_mon + 1, base.tm_mday);
+    snprintf(timeBuffer, sizeof(timeBuffer), "%02d00", base.tm_hour);
+    baseDate = dateBuffer;
+    baseTime = timeBuffer;
+    return true;
+}
+
+static auto readKmaValidateLine(WiFiClient& client, unsigned long timeoutMs = 1800UL) -> String {
+    String line;
+    line.reserve(96);
+    const unsigned long startedMs = millis();
+    while (millis() - startedMs < timeoutMs && (client.connected() || client.available())) {
+        while (client.available()) {
+            const char c = static_cast<char>(client.read());
+            if (c == '\n') {
+                line.trim();
+                return line;
+            }
+            if (line.length() < 120) {
+                line += c;
+            }
+        }
+        delay(1);
+        yield();
+    }
+    line.trim();
+    return line;
+}
+
+static void skipKmaValidateHeaders(WiFiClient& client) {
+    const unsigned long startedMs = millis();
+    String line;
+    line.reserve(64);
+    while (millis() - startedMs < 1800UL && (client.connected() || client.available())) {
+        if (!client.available()) {
+            delay(1);
+            yield();
+            continue;
+        }
+        const char c = static_cast<char>(client.read());
+        if (c != '\n') {
+            if (line.length() < 96) {
+                line += c;
+            }
+            continue;
+        }
+        line.trim();
+        if (line.length() == 0) {
+            return;
+        }
+        line = "";
+    }
+}
+
+static auto readKmaValidateBody(WiFiClient& client) -> String {
+    String body;
+    body.reserve(512);
+    const unsigned long startedMs = millis();
+    while (millis() - startedMs < 3000UL && (client.connected() || client.available())) {
+        while (client.available()) {
+            const char c = static_cast<char>(client.read());
+            if (body.length() < 900) {
+                body += c;
+            }
+        }
+        delay(1);
+        yield();
+    }
+    return body;
+}
+
+static auto extractKmaJsonString(const String& body, const char* key) -> String {
+    const String pattern = String("\"") + key + "\":\"";
+    const int start = body.indexOf(pattern);
+    if (start < 0) {
+        return "";
+    }
+    const int valueStart = start + pattern.length();
+    const int end = body.indexOf('"', valueStart);
+    if (end < 0) {
+        return "";
+    }
+    return body.substring(valueStart, end);
+}
+
 void handleWeatherConfigGet(Webserver* webserver) {
     if (!requireBearerToken(webserver)) {
         return;
@@ -1259,7 +1378,7 @@ void handleWeatherConfigSet(Webserver* webserver) {
     webserver->raw().send(HTTP_CODE_OK, "application/json", json);
 
     if (weatherClient != nullptr && enabled) {
-        weatherClient->requestRefresh(10000UL);
+        weatherClient->requestRefresh();
     }
 
     if (configManager.isClockEnabled() || configManager.isWeatherEnabled()) {
@@ -1376,6 +1495,91 @@ void handleWeatherRefresh(Webserver* webserver) {
     } else {
         doc["message"] = "weather client not initialized";
     }
+
+    String json;
+    serializeJson(doc, json);
+    setCorsHeaders(webserver);
+    webserver->raw().send(HTTP_CODE_OK, "application/json", json);
+}
+
+void handleWeatherValidateKey(Webserver* webserver) {
+    if (!requireBearerToken(webserver)) {
+        return;
+    }
+
+    JsonDocument doc;
+    const String apiKey = configManager.getWeatherKmaApiKey();
+    if (apiKey.length() == 0) {
+        doc["status"] = "error";
+        doc["valid"] = false;
+        doc["message"] = "KMA APIHub key is empty";
+
+        String json;
+        serializeJson(doc, json);
+        setCorsHeaders(webserver);
+        webserver->raw().send(HTTP_CODE_OK, "application/json", json);
+        return;
+    }
+
+    String baseDate;
+    String baseTime;
+    if (!kmaValidateDateTime(baseDate, baseTime)) {
+        doc["status"] = "error";
+        doc["valid"] = false;
+        doc["message"] = "time not synced";
+
+        String json;
+        serializeJson(doc, json);
+        setCorsHeaders(webserver);
+        webserver->raw().send(HTTP_CODE_OK, "application/json", json);
+        return;
+    }
+
+    WiFiClient client;
+    client.setTimeout(3000);
+    if (!client.connect(KMA_VALIDATE_HOST, KMA_VALIDATE_PORT)) {
+        doc["status"] = "error";
+        doc["valid"] = false;
+        doc["message"] = "KMA connect failed";
+
+        String json;
+        serializeJson(doc, json);
+        setCorsHeaders(webserver);
+        webserver->raw().send(HTTP_CODE_OK, "application/json", json);
+        return;
+    }
+
+    const String path = String("/api/typ02/openApi/VilageFcstInfoService_2.0/getUltraSrtNcst") +
+                        "?pageNo=1&numOfRows=10&dataType=JSON&base_date=" + baseDate + "&base_time=" + baseTime +
+                        "&nx=" + String(KMA_VALIDATE_SEOUL_X) + "&ny=" + String(KMA_VALIDATE_SEOUL_Y) +
+                        "&authKey=" + apiKey;
+    client.print(F("GET "));
+    client.print(path);
+    client.print(F(" HTTP/1.0\r\nHost: "));
+    client.print(KMA_VALIDATE_HOST);
+    client.print(F("\r\nUser-Agent: SmallTVUltraKoreanCustomFirmware/1.0\r\nAccept-Encoding: identity\r\nConnection: close\r\n\r\n"));
+
+    const String statusLine = readKmaValidateLine(client);
+    skipKmaValidateHeaders(client);
+    const String body = readKmaValidateBody(client);
+    client.stop();
+
+    const String resultCode = extractKmaJsonString(body, "resultCode");
+    const String resultMsg = extractKmaJsonString(body, "resultMsg");
+    const bool httpOk = statusLine.startsWith("HTTP/1.1 200") || statusLine.startsWith("HTTP/1.0 200");
+    const bool valid = httpOk && resultCode == "00";
+
+    doc["status"] = valid ? "ok" : "error";
+    doc["valid"] = valid;
+    doc["message"] = valid ? "KMA APIHub key is valid" : "KMA APIHub key validation failed";
+    doc["region"] = "서울시";
+    doc["nx"] = KMA_VALIDATE_SEOUL_X;
+    doc["ny"] = KMA_VALIDATE_SEOUL_Y;
+    doc["base_date"] = baseDate;
+    doc["base_time"] = baseTime;
+    doc["http_status"] = statusLine;
+    doc["result_code"] = resultCode;
+    doc["result_msg"] = resultMsg;
 
     String json;
     serializeJson(doc, json);

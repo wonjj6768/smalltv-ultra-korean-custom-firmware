@@ -32,7 +32,7 @@ static constexpr const char* KMA_API_HOST = "apihub.kma.go.kr";
 static constexpr uint16_t KMA_API_PORT = 80;
 static constexpr unsigned long DISPLAY_PUMP_INTERVAL_MS = 100UL;
 static constexpr unsigned long KMA_DNS_CACHE_TTL_MS = 6UL * 60UL * 60UL * 1000UL;
-static constexpr uint32_t KMA_DNS_TIMEOUT_MS = 800;
+static constexpr uint32_t KMA_DNS_TIMEOUT_MS = 3000;
 
 static void serviceWatchdog() {
     static unsigned long nextDisplayPumpMs = 0;
@@ -801,6 +801,10 @@ void WeatherClient::finishKmaRefresh(bool ok) {
     _snapshot.fetching = false;
     _refreshPhase = RefreshPhase::Idle;
     _nextRefreshMs = millis() + (ok ? nextKmaStableRefreshDelayMs() : WEATHER_INITIAL_RETRY_MS);
+    if (ok && (configManager.isClockEnabled() || configManager.isWeatherEnabled())) {
+        DisplayManager::pauseClock(0);
+        DisplayManager::drawClock();
+    }
 }
 
 bool WeatherClient::fetchForecast() {
