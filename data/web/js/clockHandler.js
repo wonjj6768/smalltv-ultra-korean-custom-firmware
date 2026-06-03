@@ -213,34 +213,57 @@ function clockHandler() {
       this.loading = false;
     },
 
-    async fetchWeatherStatus() {
-      const response = await apiFetch("/api/v1/weather/status");
-      const data = await response.json();
-      this.weatherStatus = data.status || "";
-      this.weatherSource = data.source || "KMA APIHub";
-      this.weatherTimezone = data.timezone || this.timezone || "Asia/Seoul";
-      if (!data.hasData) {
-        this.currentSummary = "";
-        this.forecastSummary = [];
-        return;
-      }
+    async fetchWeatherStatus(options = {}) {
+      const timeoutMs = Number(options.timeoutMs || 5000);
+      const controller =
+        typeof AbortController !== "undefined" ? new AbortController() : null;
+      const timeoutId =
+        controller && timeoutMs > 0
+          ? setTimeout(() => controller.abort(), timeoutMs)
+          : null;
 
-      const precipitation = Number(data.currentPrecipitation || 0);
-      const humidity = Number(data.currentHumidity || 0).toFixed(0);
-      const rainSummary =
-        data.isRaining || precipitation > 0
-          ? `강수 ${precipitation.toFixed(1)}mm`
-          : "비 없음";
-      this.currentSummary = `${data.currentTemperature}℃ · ${rainSummary} · 습도 ${humidity}%`;
-      this.forecastSummary = (data.forecast || []).map((entry) => {
-        const hour = this.formatForecastHour(entry.time);
-        const forecastPrecipitation = Number(entry.precipitation || 0);
-        const secondary =
-          forecastPrecipitation > 0
-            ? `강수 ${forecastPrecipitation.toFixed(1)}mm`
-            : `습도 ${Number(entry.humidity || 0).toFixed(0)}%`;
-        return `${hour}시 ${entry.temperature}℃ · ${secondary}`;
-      });
+      try {
+        const response = await apiFetch(
+          "/api/v1/weather/status",
+          controller ? { signal: controller.signal } : {},
+        );
+        const data = await response.json();
+        this.weatherStatus = data.status || "";
+        this.weatherSource = data.source || "KMA APIHub";
+        this.weatherTimezone = data.timezone || this.timezone || "Asia/Seoul";
+        if (!data.hasData) {
+          this.currentSummary = "";
+          this.forecastSummary = [];
+          return true;
+        }
+
+        const precipitation = Number(data.currentPrecipitation || 0);
+        const humidity = Number(data.currentHumidity || 0).toFixed(0);
+        const rainSummary =
+          data.isRaining || precipitation > 0
+            ? `강수 ${precipitation.toFixed(1)}mm`
+            : "비 없음";
+        this.currentSummary = `${data.currentTemperature}℃ · ${rainSummary} · 습도 ${humidity}%`;
+        this.forecastSummary = (data.forecast || []).map((entry) => {
+          const hour = this.formatForecastHour(entry.time);
+          const forecastPrecipitation = Number(entry.precipitation || 0);
+          const secondary =
+            forecastPrecipitation > 0
+              ? `강수 ${forecastPrecipitation.toFixed(1)}mm`
+              : `습도 ${Number(entry.humidity || 0).toFixed(0)}%`;
+          return `${hour}시 ${entry.temperature}℃ · ${secondary}`;
+        });
+        return true;
+      } catch (err) {
+        this.weatherStatus = this.weatherStatus || "weather status unavailable";
+        this.weatherSource = this.weatherSource || "KMA APIHub";
+        console.error(err);
+        return false;
+      } finally {
+        if (timeoutId) {
+          clearTimeout(timeoutId);
+        }
+      }
     },
 
     async fetchSettings() {
@@ -248,7 +271,6 @@ function clockHandler() {
       try {
         await this.fetchClockConfig();
         await this.fetchWeatherConfig();
-        await this.fetchWeatherStatus();
         this.statusMsg = "";
       } catch (err) {
         this.statusMsg = "Failed to load dashboard settings";
@@ -256,6 +278,7 @@ function clockHandler() {
       } finally {
         this.loading = false;
       }
+      this.fetchWeatherStatus({ timeoutMs: 3000 });
     },
 
     async validateKmaKey(options = {}) {
@@ -273,7 +296,10 @@ function clockHandler() {
         await apiFetch("/api/v1/weather/refresh", { method: "POST" });
         for (let attempt = 0; attempt < 15; attempt += 1) {
           await new Promise((resolve) => setTimeout(resolve, 5000));
-          await this.fetchWeatherStatus();
+          const hasStatus = await this.fetchWeatherStatus({ timeoutMs: 5000 });
+          if (!hasStatus) {
+            continue;
+          }
           const status = (this.weatherStatus || "").toLowerCase();
           if (status === "ok" && this.currentSummary) {
             this.kmaValidationStatus = "KMA APIHub key is valid.";
@@ -283,7 +309,8 @@ function clockHandler() {
             status.includes("missing") ||
             status.includes("failed") ||
             status.includes("error") ||
-            status.includes("parse")
+            status.includes("parse") ||
+            status.includes("unavailable")
           ) {
             this.kmaValidationStatus = "KMA APIHub validation failed: " + this.weatherStatus;
             return false;
@@ -364,7 +391,7 @@ function clockHandler() {
         this.enabled = !!clockData.enabled;
         this.use24h = clockData.use24h !== false;
         this.statusMsg = "Dashboard settings updated";
-        await this.fetchWeatherStatus();
+        await this.fetchWeatherStatus({ timeoutMs: 3000 });
       } catch (err) {
         this.statusMsg = err.message || "Failed to save dashboard settings";
         console.error(err);
