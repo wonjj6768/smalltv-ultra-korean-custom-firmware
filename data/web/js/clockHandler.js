@@ -346,9 +346,7 @@ function clockHandler() {
           kma_grid_y: Number(this.kmaGridY),
           timezone: (this.timezone || "Asia/Seoul").trim(),
           location_name: this.toCityLevelLabel(this.locationName),
-          ...(this.kmaApiKey.trim()
-            ? { kma_api_key: this.kmaApiKey.trim() }
-            : {}),
+          kma_api_key: this.kmaApiKey.trim(),
         }),
       });
       const weatherData = await weatherResponse.json();
