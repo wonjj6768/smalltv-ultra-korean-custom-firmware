@@ -21,6 +21,7 @@
 #include <LittleFS.h>
 #include <Arduino_GFX_Library.h>
 #include <SPI.h>
+#include <ESP8266WiFi.h>
 #include <ESP8266HTTPUpdateServer.h>
 
 #include <Logger.h>
@@ -54,9 +55,62 @@ WeatherClient* weatherClient = nullptr;
 static unsigned long g_nextDisplayUpdateMs = 0;
 static unsigned long g_nextServicePollMs = 0;
 
+static const char ROOT_HOME_HTML[] PROGMEM = R"rawliteral(<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>smalltv-ultra-korean-custom-firmware</title>
+<style>
+body{margin:0;background:#fff;color:#111;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;line-height:1.5}
+main{max-width:920px;margin:0 auto;padding:1rem}
+h1{margin:.2rem 0 1rem;font-size:1.35rem}
+.hero,.card{border:1px solid #ddd;border-radius:.55rem;padding:.9rem;background:#fff}
+.hero{margin-bottom:.8rem}
+.eyebrow{margin:.1rem 0;color:#666;font-size:.76rem;font-weight:700;letter-spacing:.02em;text-transform:uppercase}
+h2{margin:.25rem 0}
+.grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:.8rem}
+.card{display:block;color:inherit;text-decoration:none;border-color:#9fc5ff}
+.card span{display:block;color:#0b63ce;font-weight:700}
+.card strong{display:block;margin-top:.15rem;font-size:.95rem}
+.card:hover{background:#eef5ff}
+footer{margin-top:1rem;text-align:center}
+footer a{color:#0b63ce}
+@media(max-width:760px){main{padding:.75rem}.grid{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<main>
+<header><h1>SmallTV Ultra</h1></header>
+<section class="hero">
+<p class="eyebrow">wonjj6768/smalltv-ultra-korean-custom-firmware</p>
+<h2>Device Settings</h2>
+<p>Configure network, time, dashboard weather, display, updates, logs, and reset.</p>
+</section>
+<nav class="grid">
+<a class="card" href="/clock.html"><span>Dashboard</span><strong>Clock, Korean region, KMA weather</strong></a>
+<a class="card" href="/wifi.html"><span>WiFi</span><strong>Network scan and connection</strong></a>
+<a class="card" href="/ntp.html"><span>Time</span><strong>NTP server and timezone sync</strong></a>
+<a class="card" href="/rotation.html"><span>Display</span><strong>LCD orientation and brightness</strong></a>
+<a class="card" href="/update.html"><span>Update</span><strong>Firmware and LittleFS upload</strong></a>
+<a class="card" href="/gif_upload.html"><span>GIF</span><strong>In development, not for normal use</strong></a>
+<a class="card" href="/logs.html"><span>Logs</span><strong>Runtime diagnostics</strong></a>
+</nav>
+<footer><small><a href="https://github.com/wonjj6768/smalltv-ultra-korean-custom-firmware" target="_blank">wonjj6768/smalltv-ultra-korean-custom-firmware</a></small></footer>
+</main>
+</body>
+</html>)rawliteral";
+
 static void runBootDashboardFlow() {
     DisplayManager::pauseClock(0);
     DisplayManager::drawClock();
+}
+
+static void registerFastRootHome() {
+    webserver->raw().on("/", HTTP_GET, []() {
+        webserver->raw().sendHeader("Cache-Control", "no-cache, no-store, must-revalidate");
+        webserver->raw().send_P(200, "text/html", ROOT_HOME_HTML);
+    });
 }
 
 static void pumpDisplayDue(bool force = false) {
@@ -119,6 +173,7 @@ void setup() {
 
     wifiManager = new WiFiManager(configManager.getSSID(), configManager.getPassword(), AP_SSID, AP_PASSWORD);
     wifiManager->begin();
+    WiFi.setSleepMode(WIFI_NONE_SLEEP);
 
     ntpClient = new NTPClient();
     ntpClient->begin();
@@ -138,7 +193,7 @@ void setup() {
         Logger::warn("Enabled legacy OTA route because LittleFS is unavailable or empty", "Global");
     } else {
         g_legacyUpdateModeEnabled = false;
-        webserver->serveStaticC("/", "/web/index.html", "text/html");
+        registerFastRootHome();
         webserver->registerGenericStaticFallback("/web", true);
     }
 

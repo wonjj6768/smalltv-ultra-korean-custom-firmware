@@ -4,16 +4,13 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>smalltv-ultra-korean-custom-firmware</title>
-    <link rel="stylesheet" href="./css/pico.min.css?v=20260602d" />
     <link rel="stylesheet" href="./css/style.css?v=20260602d" />
-    <script src="./js/alpinejs.min.js?v=20260602d" defer></script>
-    <script src="./js/utils.js?v=20260602d"></script>
-    <script src="./js/rebootHandler.js?v=20260602d"></script>
-    <script src="./js/main.js?v=20260602d"></script>
   </head>
   <body>
     <main class="container app-shell">
-      <header id="header-placeholder"></header>
+      <header>
+        <h1>SmallTV Ultra</h1>
+      </header>
 
       <section class="settings-page">
         <div class="page-hero">
@@ -55,35 +52,18 @@
             <strong>Runtime diagnostics</strong>
           </a>
         </div>
-
-        <article class="setting-card" x-data="rebootHandler()">
-          <header class="card-heading">
-            <div>
-              <p class="eyebrow">Device Control</p>
-              <h3>Restart / Reset</h3>
-            </div>
-          </header>
-          <div class="action-row">
-            <button
-              class="contrast"
-              x-bind:disabled="loading"
-              x-on:click="reboot"
-            >
-              Reboot
-            </button>
-            <button
-              class="secondary"
-              x-bind:disabled="loading"
-              x-on:click="factoryReset"
-            >
-              Factory Reset
-            </button>
-          </div>
-          <p x-text="message"></p>
-        </article>
       </section>
 
-      <footer id="footer-placeholder"></footer>
+      <footer>
+        <small>
+          <a
+            href="https://github.com/wonjj6768/smalltv-ultra-korean-custom-firmware"
+            target="_blank"
+          >
+            wonjj6768/smalltv-ultra-korean-custom-firmware
+          </a>
+        </small>
+      </footer>
     </main>
   </body>
 </html>

@@ -17,14 +17,17 @@
 
 #include "config/ConfigManager.h"
 #include "display/DisplayManager.h"
+#include "web/Webserver.h"
 #include "wireless/WiFiManager.h"
 
 extern ConfigManager configManager;
+extern Webserver* webserver;
 
 static constexpr const char* TAG = "WeatherClient";
 static constexpr double LOCAL_PI = 3.14159265358979323846;
 static constexpr unsigned long WEATHER_REFRESH_INTERVAL_MS = 15UL * 60UL * 1000UL;
 static constexpr unsigned long WEATHER_INITIAL_RETRY_MS = 30UL * 1000UL;
+static constexpr unsigned long WEATHER_STALE_RETRY_MS = 5UL * 60UL * 1000UL;
 static constexpr unsigned long WEATHER_TIME_SYNC_RETRY_MS = 5UL * 1000UL;
 static constexpr unsigned long KMA_STABLE_REFRESH_MINUTE = 50UL;
 static constexpr size_t WEATHER_FORECAST_COUNT = 4;
@@ -36,8 +39,13 @@ static constexpr uint32_t KMA_DNS_TIMEOUT_MS = 3000;
 
 static void serviceWatchdog() {
     static unsigned long nextDisplayPumpMs = 0;
+    static unsigned long nextWebPumpMs = 0;
     const unsigned long now = millis();
     EspClass::wdtFeed();  // NOLINT(readability-static-accessed-through-instance)
+    if (webserver != nullptr && static_cast<long>(now - nextWebPumpMs) >= 0) {
+        webserver->handleClient();
+        nextWebPumpMs = now + 40UL;
+    }
     if (static_cast<long>(now - nextDisplayPumpMs) >= 0) {
         DisplayManager::update();
         nextDisplayPumpMs = now + DISPLAY_PUMP_INTERVAL_MS;
@@ -800,7 +808,8 @@ WeatherClient::StepResult WeatherClient::fetchKmaForecastStep() {
 void WeatherClient::finishKmaRefresh(bool ok) {
     _snapshot.fetching = false;
     _refreshPhase = RefreshPhase::Idle;
-    _nextRefreshMs = millis() + (ok ? nextKmaStableRefreshDelayMs() : WEATHER_INITIAL_RETRY_MS);
+    const unsigned long retryDelayMs = _snapshot.hasData ? WEATHER_STALE_RETRY_MS : WEATHER_INITIAL_RETRY_MS;
+    _nextRefreshMs = millis() + (ok ? nextKmaStableRefreshDelayMs() : retryDelayMs);
     if (ok && (configManager.isClockEnabled() || configManager.isWeatherEnabled())) {
         DisplayManager::pauseClock(0);
         DisplayManager::drawClock();
