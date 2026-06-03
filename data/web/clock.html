@@ -182,7 +182,20 @@
               </button>
             </div>
             <small x-text="kmaKeyStatus"></small>
-            <small x-text="kmaValidationStatus"></small>
+            <div
+              class="validation-panel"
+              x-show="kmaValidationTitle"
+              x-bind:class="'validation-' + kmaValidationState"
+            >
+              <strong x-text="kmaValidationTitle"></strong>
+              <template x-if="kmaValidationDetails.length">
+                <ul>
+                  <template x-for="detail in kmaValidationDetails" :key="detail">
+                    <li x-text="detail"></li>
+                  </template>
+                </ul>
+              </template>
+            </div>
             <small>
               Get your authKey from
               <a

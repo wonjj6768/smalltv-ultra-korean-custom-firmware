@@ -13,6 +13,9 @@ function clockHandler() {
     kmaApiKey: "",
     kmaKeyStatus: "",
     kmaValidationStatus: "",
+    kmaValidationState: "idle",
+    kmaValidationTitle: "",
+    kmaValidationDetails: [],
     regionResults: [],
     selectedRegionResult: "",
     regionStatus: "",
@@ -281,28 +284,52 @@ function clockHandler() {
       this.fetchWeatherStatus({ timeoutMs: 3000 });
     },
 
+    setKmaValidationResult(state, title, details = []) {
+      this.kmaValidationState = state;
+      this.kmaValidationTitle = title;
+      this.kmaValidationStatus = title;
+      this.kmaValidationDetails = details.filter(Boolean);
+    },
+
     async validateKmaKey(options = {}) {
       const silent = !!options.silent;
       if (!silent) {
         this.loading = true;
       }
-      this.kmaValidationStatus = "Validating KMA APIHub key...";
+      this.setKmaValidationResult("working", "KMA APIHub key validation is running.", [
+        "Saving the key from this web page.",
+      ]);
 
       try {
-        if (this.kmaApiKey.trim()) {
-          await this.saveWeatherConfig();
+        await this.saveWeatherConfig();
+        if (!this.kmaApiKey.trim()) {
+          this.setKmaValidationResult("error", "KMA APIHub key is empty.", [
+            "Enter an APIHub authKey, then press Validate again.",
+          ]);
+          return false;
         }
 
         await apiFetch("/api/v1/weather/refresh", { method: "POST" });
+        this.setKmaValidationResult("working", "KMA APIHub refresh requested.", [
+          "Waiting for the device weather cache to update.",
+        ]);
+
         for (let attempt = 0; attempt < 15; attempt += 1) {
           await new Promise((resolve) => setTimeout(resolve, 5000));
           const hasStatus = await this.fetchWeatherStatus({ timeoutMs: 5000 });
           if (!hasStatus) {
+            this.setKmaValidationResult("working", "Waiting for device weather status.", [
+              `Attempt ${attempt + 1}/15: weather status did not respond yet.`,
+            ]);
             continue;
           }
           const status = (this.weatherStatus || "").toLowerCase();
           if (status === "ok" && this.currentSummary) {
-            this.kmaValidationStatus = "KMA APIHub key is valid.";
+            this.setKmaValidationResult("success", "KMA APIHub key is valid.", [
+              `Device status: ${this.weatherStatus}`,
+              `Current: ${this.currentSummary}`,
+              `Forecast rows: ${this.forecastSummary.length}`,
+            ]);
             return true;
           }
           if (
@@ -312,15 +339,29 @@ function clockHandler() {
             status.includes("parse") ||
             status.includes("unavailable")
           ) {
-            this.kmaValidationStatus = "KMA APIHub validation failed: " + this.weatherStatus;
+            this.setKmaValidationResult("error", "KMA APIHub validation failed.", [
+              `Device status: ${this.weatherStatus}`,
+              this.currentSummary ? `Cached current: ${this.currentSummary}` : "",
+              "Check the key, device WiFi internet access, and KMA APIHub service state.",
+            ]);
             return false;
           }
+
+          this.setKmaValidationResult("working", "Waiting for KMA APIHub result.", [
+            `Attempt ${attempt + 1}/15`,
+            `Device status: ${this.weatherStatus || "unknown"}`,
+          ]);
         }
 
-        this.kmaValidationStatus = "KMA APIHub validation timed out.";
+        this.setKmaValidationResult("error", "KMA APIHub validation timed out.", [
+          "The key was saved, but the device did not report a successful weather update in time.",
+          `Last device status: ${this.weatherStatus || "unknown"}`,
+        ]);
         return false;
       } catch (err) {
-        this.kmaValidationStatus = "KMA APIHub key validation failed.";
+        this.setKmaValidationResult("error", "KMA APIHub key validation failed.", [
+          err.message || "Unexpected web validation error.",
+        ]);
         console.error(err);
         return false;
       } finally {

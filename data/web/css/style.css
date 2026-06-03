@@ -239,6 +239,41 @@ a {
   margin-bottom: 0;
 }
 
+.validation-panel {
+  margin: 0.55rem 0;
+  padding: 0.65rem;
+  border: 1px solid var(--ui-border);
+  border-radius: 0.45rem;
+  background: var(--ui-soft);
+}
+
+.validation-panel strong {
+  display: block;
+  margin-bottom: 0.25rem;
+}
+
+.validation-panel ul {
+  margin: 0;
+  padding-left: 1.1rem;
+  color: var(--ui-muted);
+  font-size: 0.9rem;
+}
+
+.validation-working {
+  border-color: var(--ui-action-border);
+  background: var(--ui-action-soft);
+}
+
+.validation-success {
+  border-color: #7abf8e;
+  background: #f0fff4;
+}
+
+.validation-error {
+  border-color: #e2a19d;
+  background: #fff3f2;
+}
+
 .nav-card {
   display: block;
   border-color: var(--ui-action-border);
