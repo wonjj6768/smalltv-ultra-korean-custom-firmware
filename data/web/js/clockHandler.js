@@ -46,7 +46,7 @@ function clockHandler() {
       this.kmaGridY = Number(data.kma_grid_y || 127);
       this.timezone = data.timezone || "Asia/Seoul";
       this.locationName = this.toCityLevelLabel(data.location_name || "");
-      this.kmaApiKey = "";
+      this.kmaApiKey = data.kma_api_key || "";
       this.kmaKeyStatus = data.kma_api_key_set
         ? "KMA APIHub key is saved."
         : "Required for KMA APIHub weather.";
@@ -362,7 +362,7 @@ function clockHandler() {
       this.kmaGridX = Number(weatherData.kma_grid_x || this.kmaGridX || 60);
       this.kmaGridY = Number(weatherData.kma_grid_y || this.kmaGridY || 127);
       this.timezone = weatherData.timezone || "Asia/Seoul";
-      this.kmaApiKey = "";
+      this.kmaApiKey = weatherData.kma_api_key || this.kmaApiKey;
       this.kmaKeyStatus = weatherData.kma_api_key_set
         ? "KMA APIHub key is saved."
         : "Required for KMA APIHub weather.";

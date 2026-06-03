@@ -1148,6 +1148,7 @@ void handleWeatherConfigGet(Webserver* webserver) {
     doc["kma_grid_y"] = configManager.getWeatherKmaGridY();
     doc["timezone"] = configManager.getWeatherTimezone();
     doc["location_name"] = configManager.getWeatherLocationName();
+    doc["kma_api_key"] = configManager.getWeatherKmaApiKey();
     doc["kma_api_key_set"] = strlen(configManager.getWeatherKmaApiKey()) > 0;
 
     String json;
@@ -1248,6 +1249,7 @@ void handleWeatherConfigSet(Webserver* webserver) {
     doc["kma_grid_y"] = configManager.getWeatherKmaGridY();
     doc["timezone"] = configManager.getWeatherTimezone();
     doc["location_name"] = configManager.getWeatherLocationName();
+    doc["kma_api_key"] = configManager.getWeatherKmaApiKey();
     doc["kma_api_key_set"] = strlen(configManager.getWeatherKmaApiKey()) > 0;
 
     String json;
