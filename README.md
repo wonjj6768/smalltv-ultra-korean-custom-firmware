@@ -55,21 +55,20 @@ Download the files from [GitHub Releases](https://github.com/wonjj6768/smalltv-u
 
 ## Install From Stock Firmware / 순정 펌웨어에서 설치
 
-Use this path when the stock OTA page refuses large firmware files.
+The stock OTA page does not accept the main `firmware.bin` directly. Install the bridge firmware first.
 
-순정 OTA 페이지가 큰 펌웨어 파일을 받지 못할 때 이 방법을 사용합니다.
+순정 OTA 페이지는 메인 `firmware.bin`을 직접 받을 수 없습니다. 반드시 브릿지 펌웨어를 먼저 설치하세요.
 
 1. Upload `bridge-firmware.bin` from the stock OTA page.
+   순정 OTA 페이지에서 `bridge-firmware.bin`을 업로드합니다.
 2. Connect to the `GeekMagic` AP created by the bridge firmware.
+   브릿지 펌웨어가 만든 `GeekMagic` AP에 접속합니다.
 3. Open `http://192.168.4.1/bridgeupdate`.
+   `http://192.168.4.1/bridgeupdate`를 엽니다.
 4. Upload `firmware.bin`.
+   `firmware.bin`을 업로드합니다.
 5. After reboot, open the main web UI and upload `littlefs.bin` from the update page.
-
-1. 순정 OTA 페이지에서 `bridge-firmware.bin`을 업로드합니다.
-2. 브릿지 펌웨어가 만든 `GeekMagic` AP에 접속합니다.
-3. `http://192.168.4.1/bridgeupdate`를 엽니다.
-4. `firmware.bin`을 업로드합니다.
-5. 재부팅 후 메인 웹 UI의 업데이트 페이지에서 `littlefs.bin`을 업로드합니다.
+   재부팅 후 메인 웹 UI의 업데이트 페이지에서 `littlefs.bin`을 업로드합니다.
 
 ## Direct Flash / 직접 플래싱
 
@@ -78,12 +77,11 @@ Use this only when flashing by serial/download mode.
 시리얼 다운로드 모드로 직접 플래싱할 때만 사용합니다.
 
 1. Flash `firmware.bin` to `0x00000000`.
+   `firmware.bin`을 `0x00000000`에 플래싱합니다.
 2. Flash `littlefs.bin` to `0x00200000`.
+   `littlefs.bin`을 `0x00200000`에 플래싱합니다.
 3. If Wi-Fi is not configured, connect to the `GeekMagic` AP and open `http://192.168.4.1/`.
-
-1. `firmware.bin`을 `0x00000000`에 플래싱합니다.
-2. `littlefs.bin`을 `0x00200000`에 플래싱합니다.
-3. 와이파이가 설정되지 않은 경우 `GeekMagic` AP에 접속한 뒤 `http://192.168.4.1/`을 엽니다.
+   와이파이가 설정되지 않은 경우 `GeekMagic` AP에 접속한 뒤 `http://192.168.4.1/`을 엽니다.
 
 ## First Setup / 초기 설정
 
