@@ -59,15 +59,15 @@ The stock OTA page does not accept the main `firmware.bin` directly. Install the
 
 순정 OTA 페이지는 메인 `firmware.bin`을 직접 받을 수 없습니다. 반드시 브릿지 펌웨어를 먼저 설치하세요.
 
-1. Upload `bridge-firmware.bin` from the stock OTA page.
+1. Upload `bridge-firmware.bin` from the stock OTA page.<br>
    순정 OTA 페이지에서 `bridge-firmware.bin`을 업로드합니다.
-2. Connect to the `GeekMagic` AP created by the bridge firmware.
+2. Connect to the `GeekMagic` AP created by the bridge firmware.<br>
    브릿지 펌웨어가 만든 `GeekMagic` AP에 접속합니다.
-3. Open `http://192.168.4.1/bridgeupdate`.
+3. Open `http://192.168.4.1/bridgeupdate`.<br>
    `http://192.168.4.1/bridgeupdate`를 엽니다.
-4. Upload `firmware.bin`.
+4. Upload `firmware.bin`.<br>
    `firmware.bin`을 업로드합니다.
-5. After reboot, open the main web UI and upload `littlefs.bin` from the update page.
+5. After reboot, open the main web UI and upload `littlefs.bin` from the update page.<br>
    재부팅 후 메인 웹 UI의 업데이트 페이지에서 `littlefs.bin`을 업로드합니다.
 
 ## Direct Flash / 직접 플래싱
@@ -76,11 +76,11 @@ Use this only when flashing by serial/download mode.
 
 시리얼 다운로드 모드로 직접 플래싱할 때만 사용합니다.
 
-1. Flash `firmware.bin` to `0x00000000`.
+1. Flash `firmware.bin` to `0x00000000`.<br>
    `firmware.bin`을 `0x00000000`에 플래싱합니다.
-2. Flash `littlefs.bin` to `0x00200000`.
+2. Flash `littlefs.bin` to `0x00200000`.<br>
    `littlefs.bin`을 `0x00200000`에 플래싱합니다.
-3. If Wi-Fi is not configured, connect to the `GeekMagic` AP and open `http://192.168.4.1/`.
+3. If Wi-Fi is not configured, connect to the `GeekMagic` AP and open `http://192.168.4.1/`.<br>
    와이파이가 설정되지 않은 경우 `GeekMagic` AP에 접속한 뒤 `http://192.168.4.1/`을 엽니다.
 
 ## First Setup / 초기 설정
