@@ -106,12 +106,12 @@ Weather data uses KMA APIHub.
 
 날씨 데이터는 기상청 APIHub를 사용합니다.
 
-- Issue an authKey from [KMA APIHub](https://apihub.kma.go.kr/apiList.do).
+- Issue an authKey from [KMA APIHub](https://apihub.kma.go.kr/).
 - This firmware uses KMA APIHub ultra-short current observation and ultra-short forecast APIs.
 - The public firmware does not include a private API key.
 - Enter your own key in the device web UI: `Dashboard` -> `KMA APIHub Key`.
 
-- [기상청 API허브](https://apihub.kma.go.kr/apiList.do)에서 authKey를 발급받습니다.
+- [기상청 API허브](https://apihub.kma.go.kr/)에서 authKey를 발급받습니다.
 - 이 펌웨어는 기상청 APIHub 초단기실황과 초단기예보 데이터를 사용합니다.
 - 공개 펌웨어에는 개인 API 키가 포함되어 있지 않습니다.
 - 기기 웹 UI의 `Dashboard` -> `KMA APIHub Key`에 본인 키를 입력하세요.
