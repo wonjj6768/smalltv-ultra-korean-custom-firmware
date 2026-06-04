@@ -107,12 +107,16 @@ Weather data uses KMA APIHub.
 날씨 데이터는 기상청 APIHub를 사용합니다.
 
 - Issue an authKey from [KMA APIHub](https://apihub.kma.go.kr/).
+- After issuing the key, also apply for API usage for the KMA APIHub forecast service used by this firmware.
 - This firmware uses KMA APIHub ultra-short current observation and ultra-short forecast APIs.
+- Required APIHub items are `VilageFcstInfoService_2.0/getUltraSrtNcst` and `VilageFcstInfoService_2.0/getUltraSrtFcst`.
 - The public firmware does not include a private API key.
 - Enter your own key in the device web UI: `Dashboard` -> `KMA APIHub Key`.
 
 - [기상청 API허브](https://apihub.kma.go.kr/)에서 authKey를 발급받습니다.
+- 키 발급 후 이 펌웨어가 사용하는 기상청 APIHub 예보 서비스에 대해 `API 활용신청`도 해야 합니다.
 - 이 펌웨어는 기상청 APIHub 초단기실황과 초단기예보 데이터를 사용합니다.
+- 필요한 활용신청 항목은 `VilageFcstInfoService_2.0/getUltraSrtNcst`와 `VilageFcstInfoService_2.0/getUltraSrtFcst`입니다.
 - 공개 펌웨어에는 개인 API 키가 포함되어 있지 않습니다.
 - 기기 웹 UI의 `Dashboard` -> `KMA APIHub Key`에 본인 키를 입력하세요.
 
