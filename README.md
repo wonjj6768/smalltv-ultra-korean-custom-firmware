@@ -12,14 +12,14 @@ Based on / 원본 기반: [Times-Z/GeekMagic-Open-Firmware](https://github.com/T
 
 ![Clear Dashboard](.github/assets/dashboard-preview-clear.png)
 ![Rain Dashboard](.github/assets/dashboard-preview-rain.png)
-![Air Quality Dashboard](.github/assets/dashboard-preview-air.png)
+![Korean Dashboard](.github/assets/dashboard-preview-air.png)
 
 ## Features / 주요 기능
 
 - Korean clock and weather dashboard tuned for SmallTV-Ultra / SmallTV-Ultra 화면에 맞춘 한국어 시계/날씨 대시보드
 - KMA APIHub weather support with Korean region lookup / 기상청 APIHub 기반 날씨와 한국 지역 검색 설정
-- Hourly forecast row with temperature, precipitation amount, and humidity / 시간별 예보에 온도, 강수량, 습도 표시
-- Local web UI for Wi-Fi, time, weather, update, logs, and reset / 와이파이, 시간, 날씨, 업데이트, 로그, 초기화를 위한 로컬 웹 UI
+- Current observation plus hourly forecast row with temperature, precipitation amount, and humidity / 현재 실황과 시간별 예보에 온도, 강수량, 습도 표시
+- Local web UI for Wi-Fi, time, weather, display, updates, and logs / 와이파이, 시간, 날씨, 화면, 업데이트, 로그를 위한 로컬 웹 UI
 - GIF upload/playback code is kept, but the feature is still in development / GIF 업로드/재생 코드는 남겨두었지만 기능은 아직 개발중입니다
 
 ## Supported Device / 지원 기기
@@ -38,9 +38,9 @@ Flashing custom firmware can fail and may require serial recovery. Use it at you
 
 커스텀 펌웨어 설치는 실패할 수 있으며, 경우에 따라 시리얼 복구가 필요할 수 있습니다. 반드시 SmallTV-Ultra 기기인지 확인한 뒤 본인 책임하에 사용하세요.
 
-Weather and air-quality data may be delayed, unavailable, or inaccurate depending on API availability, region settings, and provider data.
+Weather data may be delayed, unavailable, or inaccurate depending on API availability, region settings, and provider data.
 
-날씨 및 대기질 정보는 API 상태, 지역 설정, 제공기관 데이터에 따라 지연되거나, 표시되지 않거나, 실제와 다를 수 있습니다.
+날씨 정보는 API 상태, 지역 설정, 제공기관 데이터에 따라 지연되거나, 표시되지 않거나, 실제와 다를 수 있습니다.
 
 ## Release Files / 릴리즈 파일
 
@@ -107,12 +107,12 @@ Weather data uses KMA APIHub.
 날씨 데이터는 기상청 APIHub를 사용합니다.
 
 - Issue an authKey from [KMA APIHub](https://apihub.kma.go.kr/apiList.do).
-- This firmware uses KMA short-term forecast APIs such as ultra-short current/forecast and village forecast.
+- This firmware uses KMA APIHub ultra-short current observation and ultra-short forecast APIs.
 - The public firmware does not include a private API key.
 - Enter your own key in the device web UI: `Dashboard` -> `KMA APIHub Key`.
 
 - [기상청 API허브](https://apihub.kma.go.kr/apiList.do)에서 authKey를 발급받습니다.
-- 이 펌웨어는 초단기실황, 초단기예보, 단기예보 계열 데이터를 사용합니다.
+- 이 펌웨어는 기상청 APIHub 초단기실황과 초단기예보 데이터를 사용합니다.
 - 공개 펌웨어에는 개인 API 키가 포함되어 있지 않습니다.
 - 기기 웹 UI의 `Dashboard` -> `KMA APIHub Key`에 본인 키를 입력하세요.
 

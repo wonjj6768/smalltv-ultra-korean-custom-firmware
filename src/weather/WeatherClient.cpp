@@ -257,6 +257,12 @@ static auto formatHourMinute(const tm& timeInfo, int minute) -> String {
     return buffer;
 }
 
+static auto makeKstHourTimestamp(const tm& timeInfo) -> time_t {
+    char hour[4] = {};
+    snprintf(hour, sizeof(hour), "%02d", timeInfo.tm_hour);
+    return makeDisplayTimestamp(formatKstDate(timeInfo), String(hour));
+}
+
 static auto mapKmaWeatherCode(int sky, int pty) -> int {
     switch (pty) {
         case 1:
@@ -764,7 +770,8 @@ WeatherClient::StepResult WeatherClient::fetchKmaForecastStep() {
 
     fcstContentLength = readHttpHeadersContentLength(forecastClient);
     serviceWatchdog();
-    const bool forecastParsed = parseKmaForecastStream(forecastClient, fcstContentLength, _snapshot.forecast);
+    std::array<WeatherClient::ForecastEntry, WEATHER_FORECAST_COUNT> forecast{};
+    const bool forecastParsed = parseKmaForecastStream(forecastClient, fcstContentLength, forecast);
     forecastClient.stop();
     serviceWatchdog();
 
@@ -781,7 +788,16 @@ WeatherClient::StepResult WeatherClient::fetchKmaForecastStep() {
         return StepResult::Failed;
     }
 
-    _snapshot.currentTime = makeDisplayTimestamp(_pendingNcstDate, _pendingNcstTime.substring(0, 2));
+    const time_t currentHour = makeKstHourTimestamp(kstNowTm());
+    int currentSkyWeatherCode = -1;
+    for (const auto& entry : forecast) {
+        if (entry.timestamp == currentHour && entry.weatherCode >= 0) {
+            currentSkyWeatherCode = entry.weatherCode;
+            break;
+        }
+    }
+
+    _snapshot.currentTime = currentHour;
     _snapshot.currentTemperature = _pendingCurrentTemperature;
     _snapshot.currentRain = _pendingCurrentRain;
     _snapshot.currentPrecipitation = _pendingCurrentRain;
@@ -792,10 +808,33 @@ WeatherClient::StepResult WeatherClient::fetchKmaForecastStep() {
     _snapshot.currentWeatherCode =
         _pendingCurrentPty != 0
             ? mapKmaWeatherCode(3, _pendingCurrentPty)
-            : (_snapshot.forecast[0].weatherCode >= 0 ? _snapshot.forecast[0].weatherCode : mapKmaWeatherCode(3, 0));
+            : (currentSkyWeatherCode >= 0 ? currentSkyWeatherCode : mapKmaWeatherCode(3, 0));
     _snapshot.isRaining = _pendingCurrentRain > 0.0F || _pendingCurrentPty != 0;
     _snapshot.utcOffsetSeconds = 9L * 60L * 60L;
     _snapshot.timezone = "Asia/Seoul";
+
+    for (auto& entry : _snapshot.forecast) {
+        entry = WeatherClient::ForecastEntry{};
+    }
+    _snapshot.forecast[0].timestamp = currentHour;
+    _snapshot.forecast[0].temperature = _pendingCurrentTemperature;
+    _snapshot.forecast[0].rain = _pendingCurrentRain;
+    _snapshot.forecast[0].precipitation = _pendingCurrentRain;
+    _snapshot.forecast[0].humidity = _pendingCurrentHumidity;
+    _snapshot.forecast[0].weatherCode = _snapshot.currentWeatherCode;
+
+    size_t outputIndex = 1;
+    for (const auto& entry : forecast) {
+        if (entry.timestamp <= currentHour) {
+            continue;
+        }
+        _snapshot.forecast[outputIndex] = entry;
+        ++outputIndex;
+        if (outputIndex >= WEATHER_FORECAST_COUNT) {
+            break;
+        }
+    }
+
     _snapshot.hasData = true;
     _snapshot.lastUpdated = time(nullptr);
     _snapshot.status = "ok";

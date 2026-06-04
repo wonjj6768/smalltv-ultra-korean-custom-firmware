@@ -85,7 +85,7 @@ footer a{color:#0b63ce}
 <section class="hero">
 <p class="eyebrow">wonjj6768/smalltv-ultra-korean-custom-firmware</p>
 <h2>Device Settings</h2>
-<p>Configure network, time, dashboard weather, display, updates, logs, and reset.</p>
+<p>Configure network, time, dashboard weather, display, updates, and logs.</p>
 </section>
 <nav class="grid">
 <a class="card" href="/clock.html"><span>Dashboard</span><strong>Clock, Korean region, KMA weather</strong></a>
