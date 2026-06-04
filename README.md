@@ -1,160 +1,109 @@
 # smalltv-ultra-korean-custom-firmware
 
-Korean-first custom firmware for the ESP8266-based **SmallTV-Ultra**.
+**SmallTV-Ultra 전용 한국어 커스텀 펌웨어**입니다.
 
-ESP8266 기반 **SmallTV-Ultra**를 위한 한국어 중심 커스텀 펌웨어입니다.
+원본 프로젝트 [Times-Z/GeekMagic-Open-Firmware](https://github.com/Times-Z/GeekMagic-Open-Firmware)를 기반으로, 한국어 시계/날씨 표시와 국내 사용 흐름에 맞춰 정리했습니다.
 
-Repository / 저장소: [wonjj6768/smalltv-ultra-korean-custom-firmware](https://github.com/wonjj6768/smalltv-ultra-korean-custom-firmware)
+저장소: [wonjj6768/smalltv-ultra-korean-custom-firmware](https://github.com/wonjj6768/smalltv-ultra-korean-custom-firmware)
 
-Based on / 원본 기반: [Times-Z/GeekMagic-Open-Firmware](https://github.com/Times-Z/GeekMagic-Open-Firmware)
+## 미리보기
 
-## Preview / 미리보기
+![맑음 화면](.github/assets/dashboard-preview-clear.png)
+![비 화면](.github/assets/dashboard-preview-rain.png)
+![대기질 화면](.github/assets/dashboard-preview-air.png)
 
-![Clear Dashboard](.github/assets/dashboard-preview-clear.png)
-![Rain Dashboard](.github/assets/dashboard-preview-rain.png)
-![Korean Dashboard](.github/assets/dashboard-preview-air.png)
+## 주요 기능
 
-## Features / 주요 기능
+- SmallTV-Ultra 화면에 맞춘 한국어 시계/날씨 대시보드
+- 기상청 APIHub 기반 현재 실황 + 초단기예보 표시
+- 온도, 강수량, 습도, 미세먼지, 오존 표시
+- 로컬 웹 UI에서 Wi-Fi, 시간, 지역, 밝기, 업데이트 설정
+- 순정 펌웨어에서 넘어오기 위한 브릿지 펌웨어 제공
 
-- Korean clock and weather dashboard tuned for SmallTV-Ultra / SmallTV-Ultra 화면에 맞춘 한국어 시계/날씨 대시보드
-- KMA APIHub weather support with Korean region lookup / 기상청 APIHub 기반 날씨와 한국 지역 검색 설정
-- Current observation plus hourly forecast row with temperature, precipitation amount, and humidity / 현재 실황과 시간별 예보에 온도, 강수량, 습도 표시
-- Local web UI for Wi-Fi, time, weather, display, updates, and logs / 와이파이, 시간, 날씨, 화면, 업데이트, 로그를 위한 로컬 웹 UI
-- GIF upload/playback code is kept, but the feature is still in development / GIF 업로드/재생 코드는 남겨두었지만 기능은 아직 개발중입니다
+GIF 관련 코드는 남겨두었지만, 일반 사용자 기능으로는 아직 개발 중입니다.
 
-## Supported Device / 지원 기기
+## 지원 기기
 
-This firmware is intended for **SmallTV-Ultra only**.
+- **SmallTV-Ultra만 지원합니다.**
+- 다른 GeekMagic/SmallTV 모델은 이 저장소의 지원 범위가 아닙니다.
 
-이 펌웨어는 **SmallTV-Ultra 전용**으로 정리했습니다.
+## 릴리즈 파일
 
-## Disclaimer / 면책
+[GitHub Releases](https://github.com/wonjj6768/smalltv-ultra-korean-custom-firmware/releases/latest)에서 받습니다.
 
-This is an unofficial custom firmware for SmallTV-Ultra. It is not affiliated with or endorsed by GeekMagic, Times-Z, the original firmware author, KMA, or any weather data provider.
+- `bridge-firmware.bin`: 순정 펌웨어 OTA 제한을 넘기기 위한 중간 펌웨어
+- `firmware.bin`: 메인 펌웨어
+- `littlefs.bin`: 웹 UI, 아이콘, 지역 데이터
+- `SHA256SUMS.txt`: 릴리즈 파일 체크섬
+
+## 설치 요약
+
+순정 펌웨어 OTA 페이지는 메인 `firmware.bin`을 직접 받지 못합니다. **순정 펌웨어에서 설치할 때는 반드시 `bridge-firmware.bin`을 먼저 올린 뒤 메인 펌웨어로 넘어가야 합니다.**
+
+1. 순정 OTA 페이지에서 `bridge-firmware.bin` 업로드
+2. 기기가 만든 `GeekMagic` AP에 접속
+3. `http://192.168.4.1/bridgeupdate`에서 `firmware.bin` 업로드
+4. 재부팅 후 기기 웹 UI에서 `littlefs.bin` 업로드
+
+이미 이 커스텀 펌웨어가 설치된 기기는 웹 UI의 업데이트 페이지에서 `firmware.bin`과 `littlefs.bin`을 업데이트하면 됩니다. 업데이트 중에는 브라우저 탭을 닫지 마세요.
+
+자세한 설치/복구 절차는 [플래싱 가이드](docs/flash-guide.md)를 보세요.
+
+## 초기 설정
+
+Wi-Fi가 설정되지 않았으면 기기가 AP 모드로 시작합니다.
+
+- AP SSID: `GeekMagic`
+- 비밀번호: 없음
+- 설정 주소: `http://192.168.4.1/`
+
+웹 UI에서 Wi-Fi, 시간, Dashboard, 지역, 기상청 API 키를 설정합니다.
+
+## 기상청 APIHub 설정
+
+공개 펌웨어에는 개인 API 키가 들어있지 않습니다. 날씨를 사용하려면 본인의 기상청 APIHub 키를 입력해야 합니다.
+
+1. [기상청 APIHub](https://apihub.kma.go.kr/)에서 `authKey`를 발급받습니다.
+2. APIHub에서 아래 항목을 **API 활용신청**합니다.
+3. 기기 웹 UI의 `Dashboard` 설정에 발급받은 키를 입력합니다.
+4. `Validate`로 키를 확인한 뒤 지역을 저장합니다.
+
+필요한 APIHub 신청 항목:
+
+- `4. 동네예보(초단기실황·초단기예보·단기예보) 조회`
+- `4.1 초단기실황조회`
+- `4.2 초단기예보조회`
+
+사용하는 서비스 경로:
+
+- `VilageFcstInfoService_2.0/getUltraSrtNcst`
+- `VilageFcstInfoService_2.0/getUltraSrtFcst`
+
+`지상관측`, `종관기상관측(ASOS)`, `방재기상관측(AWS)`는 이 펌웨어에 필요하지 않습니다.
+
+## 문서
+
+- [플래싱 가이드](docs/flash-guide.md): 설치, 업데이트, 복구 절차
+- [개발 메모](docs/development.md): 빌드, 웹 UI, 호스트 렌더러
+- [릴리즈 체크리스트](docs/release-checklist.md): 공개 릴리즈 전 확인 순서
+
+## 개발
+
+로컬 빌드, 웹 UI 수정, 호스트 렌더러 사용법은 [개발 메모](docs/development.md)에만 정리합니다.
+
+## 면책
 
 이 펌웨어는 SmallTV-Ultra용 비공식 커스텀 펌웨어입니다. GeekMagic, Times-Z, 원본 펌웨어 개발자, 기상청 또는 날씨 데이터 제공기관과 공식적인 관련이 없습니다.
 
-Flashing custom firmware can fail and may require serial recovery. Use it at your own risk, and make sure your device is SmallTV-Ultra before installing.
-
 커스텀 펌웨어 설치는 실패할 수 있으며, 경우에 따라 시리얼 복구가 필요할 수 있습니다. 반드시 SmallTV-Ultra 기기인지 확인한 뒤 본인 책임하에 사용하세요.
 
-Weather data may be delayed, unavailable, or inaccurate depending on API availability, region settings, and provider data.
+날씨 정보는 API 상태, 지역 설정, 제공기관 데이터에 따라 지연되거나 실제와 다를 수 있습니다.
 
-날씨 정보는 API 상태, 지역 설정, 제공기관 데이터에 따라 지연되거나, 표시되지 않거나, 실제와 다를 수 있습니다.
+## 라이선스와 자산
 
-## Release Files / 릴리즈 파일
-
-Download the files from [GitHub Releases](https://github.com/wonjj6768/smalltv-ultra-korean-custom-firmware/releases).
-
-[GitHub Releases](https://github.com/wonjj6768/smalltv-ultra-korean-custom-firmware/releases)에서 아래 파일을 받습니다.
-
-- `bridge-firmware.bin`: OTA bridge for stock firmware upload limits / 순정 펌웨어 OTA 용량 제한을 넘기기 위한 중간 펌웨어
-- `firmware.bin`: main firmware / 실제 메인 펌웨어
-- `littlefs.bin`: web UI, icons, and data files / 웹 UI, 아이콘, 데이터 파일
-- `SHA256SUMS.txt`: release file checksums / 릴리즈 파일 체크섬
-
-## Install From Stock Firmware / 순정 펌웨어에서 설치
-
-The stock OTA page does not accept the main `firmware.bin` directly. Install the bridge firmware first.
-
-순정 OTA 페이지는 메인 `firmware.bin`을 직접 받을 수 없습니다. 반드시 브릿지 펌웨어를 먼저 설치하세요.
-
-1. Upload `bridge-firmware.bin` from the stock OTA page.<br>
-   순정 OTA 페이지에서 `bridge-firmware.bin`을 업로드합니다.
-2. Connect to the `GeekMagic` AP created by the bridge firmware.<br>
-   브릿지 펌웨어가 만든 `GeekMagic` AP에 접속합니다.
-3. Open `http://192.168.4.1/bridgeupdate`.<br>
-   `http://192.168.4.1/bridgeupdate`를 엽니다.
-4. Upload `firmware.bin`.<br>
-   `firmware.bin`을 업로드합니다.
-5. After reboot, open the main web UI and upload `littlefs.bin` from the update page.<br>
-   재부팅 후 메인 웹 UI의 업데이트 페이지에서 `littlefs.bin`을 업로드합니다.
-
-## Direct Flash / 직접 플래싱
-
-Use this only when flashing by serial/download mode.
-
-시리얼 다운로드 모드로 직접 플래싱할 때만 사용합니다.
-
-1. Flash `firmware.bin` to `0x00000000`.<br>
-   `firmware.bin`을 `0x00000000`에 플래싱합니다.
-2. Flash `littlefs.bin` to `0x00200000`.<br>
-   `littlefs.bin`을 `0x00200000`에 플래싱합니다.
-3. If Wi-Fi is not configured, connect to the `GeekMagic` AP and open `http://192.168.4.1/`.<br>
-   와이파이가 설정되지 않은 경우 `GeekMagic` AP에 접속한 뒤 `http://192.168.4.1/`을 엽니다.
-
-## First Setup / 초기 설정
-
-Open the device web UI after installation.
-
-설치 후 기기 웹 UI를 엽니다.
-
-- Configure Wi-Fi / 와이파이를 설정합니다.
-- Configure time/NTP if needed / 필요한 경우 시간/NTP를 설정합니다.
-- Open Dashboard settings and enter your own KMA APIHub key / Dashboard 설정에서 본인의 기상청 APIHub 인증키를 입력합니다.
-- Search and apply a Korean weather region such as `춘천시` or `서울시` / `춘천시`, `서울시` 같은 한국 지역명을 검색해서 적용합니다.
-
-The public firmware does not include a private KMA API key.
-
-공개 펌웨어에는 개인 기상청 API 인증키가 포함되어 있지 않습니다.
-
-## KMA API Key / 기상청 API 키
-
-Weather data uses KMA APIHub.
-
-날씨 데이터는 기상청 APIHub를 사용합니다.
-
-- Issue an authKey from [KMA APIHub](https://apihub.kma.go.kr/).
-- After issuing the key, apply for API usage on the KMA APIHub page.
-- Required APIHub category: `4. 동네예보(초단기실황·초단기예보·단기예보) 조회`
-- Required detail APIs: `4.1 초단기실황조회`, `4.2 초단기예보조회`
-- Required service paths: `VilageFcstInfoService_2.0/getUltraSrtNcst`, `VilageFcstInfoService_2.0/getUltraSrtFcst`
-- `지상관측`, `종관기상관측(ASOS)`, and `방재기상관측(AWS)` are not required for this firmware.
-- The public firmware does not include a private API key.
-- Enter your own key in the device web UI: `Dashboard` -> `KMA APIHub Key`.
-
-- [기상청 API허브](https://apihub.kma.go.kr/)에서 authKey를 발급받습니다.
-- 키 발급 후 기상청 APIHub 페이지에서 `API 활용신청`도 해야 합니다.
-- 필요한 APIHub 항목: `4. 동네예보(초단기실황·초단기예보·단기예보) 조회`
-- 필요한 상세기능: `4.1 초단기실황조회`, `4.2 초단기예보조회`
-- 필요한 서비스 경로: `VilageFcstInfoService_2.0/getUltraSrtNcst`, `VilageFcstInfoService_2.0/getUltraSrtFcst`
-- `지상관측`, `종관기상관측(ASOS)`, `방재기상관측(AWS)` 항목은 이 펌웨어에 필요하지 않습니다.
-- 공개 펌웨어에는 개인 API 키가 포함되어 있지 않습니다.
-- 기기 웹 UI의 `Dashboard` -> `KMA APIHub Key`에 본인 키를 입력하세요.
-
-## Documentation / 문서
-
-- [Flash Guide](docs/flash-guide.md) / 플래싱 및 복구 절차
-- [Development Notes](docs/development.md) / 개발, 빌드, 호스트 미리보기
-- [Release Checklist](docs/release-checklist.md) / 릴리즈 체크리스트
-
-## Build / 빌드
-
-Requires PlatformIO.
-
-PlatformIO가 필요합니다.
-
-```sh
-pio run
-pio run -t buildfs
-pio run -d tools/bridge-firmware
-```
-
-## Project Tools / 프로젝트 도구
-
-- `tools/bridge-firmware`: small OTA bridge firmware / 순정 OTA 제한 우회용 중간 펌웨어
-- `tools/host-exact`: local display preview renderer / 로컬 디스플레이 프리뷰 렌더러
-
-## Third-Party Assets / 서드파티 자산
-
-- Firmware source code is released under `GPL-3.0-or-later` / 펌웨어 소스 코드는 `GPL-3.0-or-later`로 배포됩니다.
-- `tools/fontgen/assets/fonts/rajdhani/Rajdhani-Bold.ttf` is bundled under the `SIL Open Font License 1.1` / `Rajdhani-Bold.ttf`는 `SIL Open Font License 1.1`로 포함되어 있습니다.
-- `src/display/UiTextFont.cpp` is generated and committed. If regenerated, use `Noto Sans KR` / `UiTextFont.cpp`는 생성 후 커밋된 파일입니다. 재생성 시 `Noto Sans KR`만 사용합니다.
-- `data/web/css/pico.min.css` is `MIT` licensed / `pico.min.css`는 `MIT` 라이선스입니다.
-- `data/weather-icons/*.bmp` are generated from [`basmilius/weather-icons`](https://github.com/basmilius/weather-icons). See `data/weather-icons/LICENSE.txt` / 날씨 아이콘은 `basmilius/weather-icons`에서 생성했으며 `data/weather-icons/LICENSE.txt`를 참고하세요.
-
-## License and Upstream / 라이선스와 원본
-
-- License / 라이선스: `GPL-3.0-or-later`
-- License file / 라이선스 파일: `LICENSE`
-- Upstream / 원본: [Times-Z/GeekMagic-Open-Firmware](https://github.com/Times-Z/GeekMagic-Open-Firmware)
+- 소스 코드: `GPL-3.0-or-later`
+- 원본 프로젝트: [Times-Z/GeekMagic-Open-Firmware](https://github.com/Times-Z/GeekMagic-Open-Firmware)
+- 숫자 폰트 `Rajdhani-Bold.ttf`: `SIL Open Font License 1.1`
+- 한국어 UI 폰트 `src/display/UiTextFont.cpp`: `Noto Sans KR` 기반 생성 파일
+- 웹 UI CSS `pico.min.css`: `MIT`
+- 날씨 아이콘: [`basmilius/weather-icons`](https://github.com/basmilius/weather-icons), 자세한 내용은 `data/weather-icons/LICENSE.txt`
