@@ -46,12 +46,41 @@ auto WiFiManager::isConnected() -> bool { return true; }
 
 auto WiFiManager::getConnectedSSID() -> String { return String("Host WiFi"); }
 
+static auto daysFromCivil(int year, unsigned month, unsigned day) -> long {
+    year -= month <= 2 ? 1 : 0;
+    const int era = (year >= 0 ? year : year - 399) / 400;
+    const unsigned yoe = static_cast<unsigned>(year - era * 400);
+    const unsigned doy = (153 * (month + (month > 2 ? -3 : 9)) + 2) / 5 + day - 1;
+    const unsigned doe = yoe * 365 + yoe / 4 - yoe / 100 + doy;
+    return era * 146097L + static_cast<long>(doe) - 719468L;
+}
+
+static auto displayTimestampFromLocalTime(const std::tm& timeInfo) -> std::time_t {
+    const int year = timeInfo.tm_year + 1900;
+    const unsigned month = static_cast<unsigned>(timeInfo.tm_mon + 1);
+    const unsigned day = static_cast<unsigned>(timeInfo.tm_mday);
+    const long days = daysFromCivil(year, month, day);
+    return static_cast<std::time_t>((days * 24L * 60L * 60L) + (static_cast<long>(timeInfo.tm_hour) * 60L * 60L));
+}
+
+static auto forecastDisplayTimestamp(std::time_t now, int hoursAhead) -> std::time_t {
+    std::tm localTime = {};
+    if (std::tm* timeInfo = std::localtime(&now); timeInfo != nullptr) {
+        localTime = *timeInfo;
+    }
+    localTime.tm_min = 0;
+    localTime.tm_sec = 0;
+    localTime.tm_hour += hoursAhead;
+    std::mktime(&localTime);
+    return displayTimestampFromLocalTime(localTime);
+}
+
 static auto applyWeatherPreset(WeatherClient::Snapshot& snapshot, const std::string& preset, std::time_t now) -> void {
     const std::string scenario = preset == "aq-korea" ? "air" : preset;
     snapshot = {};
     snapshot.hasData = true;
     snapshot.hasAirQuality = true;
-    snapshot.currentTime = now;
+    snapshot.currentTime = forecastDisplayTimestamp(now, 0);
     snapshot.lastUpdated = now;
     snapshot.utcOffsetSeconds = 9 * 60 * 60;
     snapshot.timezone = "Asia/Seoul";
@@ -135,7 +164,7 @@ static auto applyWeatherPreset(WeatherClient::Snapshot& snapshot, const std::str
 
     for (size_t index = 0; index < snapshot.forecast.size(); ++index) {
         auto& entry = snapshot.forecast[index];
-        entry.timestamp = now + static_cast<std::time_t>((index + 1) * 3600);
+        entry.timestamp = forecastDisplayTimestamp(now, static_cast<int>(index) + 1);
         entry.temperature = temperatures[index];
         entry.rain = precipitation[index];
         entry.precipitation = precipitation[index];

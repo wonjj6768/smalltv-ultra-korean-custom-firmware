@@ -389,6 +389,17 @@ static void lcdFlushClockCanvases() {
     }
 }
 
+static void lcdResetWeatherCache() {
+    g_weatherTitleCache = "";
+    g_weatherCurrentCache = "";
+    g_currentWeatherIconCache = -999;
+    g_currentUmbrellaBadgeCache = false;
+    g_forecastWeatherIconCache.fill(-999);
+    for (auto& line : g_weatherForecastCache) {
+        line = "";
+    }
+}
+
 static void lcdDrawDashboardChrome(Arduino_GFX* target, bool showWeather) {
     target->fillScreen(LCD_BLACK);
     if (!showWeather) {
@@ -2092,6 +2103,12 @@ auto DisplayManager::drawClock() -> void {
     }
 
     lcdDrawClockInner();
+}
+
+auto DisplayManager::invalidateWeather() -> void {
+    lcdResetWeatherCache();
+    g_lastClockDrawnSecond = 0;
+    g_lastClockStaticMinute = -1;
 }
 
 auto DisplayManager::pauseClock(uint32_t durationMs) -> void {

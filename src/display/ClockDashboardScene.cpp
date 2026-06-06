@@ -96,6 +96,27 @@ static auto formatForecastHourLabel(std::time_t timestamp) -> std::string {
     return hour;
 }
 
+static auto hourSerialFromTm(const std::tm& timeInfo) -> long {
+    return ((static_cast<long>(timeInfo.tm_year) * 366L) + static_cast<long>(timeInfo.tm_yday)) * 24L +
+           static_cast<long>(timeInfo.tm_hour);
+}
+
+static auto currentLocalHourSerial(std::time_t timestamp) -> long {
+    std::tm* timeInfo = std::localtime(&timestamp);
+    if (timeInfo == nullptr) {
+        return -1;
+    }
+    return hourSerialFromTm(*timeInfo);
+}
+
+static auto forecastDisplayHourSerial(std::time_t timestamp) -> long {
+    std::tm* timeInfo = std::gmtime(&timestamp);
+    if (timeInfo == nullptr) {
+        return -1;
+    }
+    return hourSerialFromTm(*timeInfo);
+}
+
 static auto formatForecastMetric(const ForecastEntry& entry) -> std::string {
     if (entry.precipitation > 0.0F) {
         std::string label = formatDecimal(entry.precipitation);
@@ -335,10 +356,15 @@ auto buildScene(const Input& input) -> Scene {
     }
     scene.weatherIconCode = input.weather.currentWeatherCode;
 
-    for (size_t i = 0; i < input.weather.forecast.size(); ++i) {
+    const long currentHourSerial = input.validTime ? currentLocalHourSerial(input.now) : -1;
+    size_t visualIndex = 0;
+    for (size_t i = 0; i < input.weather.forecast.size() && visualIndex < scene.weatherForecastVisuals.size(); ++i) {
         const ForecastEntry& entry = input.weather.forecast[i];
         if (!entry.hasData) {
-            scene.weatherForecastVisuals[i] = Scene::ForecastVisual{};
+            continue;
+        }
+        const long entryHourSerial = forecastDisplayHourSerial(entry.timestamp);
+        if (currentHourSerial >= 0 && entryHourSerial >= 0 && entryHourSerial < currentHourSerial) {
             continue;
         }
 
@@ -349,7 +375,8 @@ auto buildScene(const Input& input) -> Scene {
         visual.temperatureLabel += "℃";
         visual.weatherCode = entry.weatherCode;
         visual.precipitationLabel = formatForecastMetric(entry);
-        scene.weatherForecastVisuals[i] = visual;
+        scene.weatherForecastVisuals[visualIndex] = visual;
+        ++visualIndex;
     }
 
     return scene;

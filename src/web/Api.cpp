@@ -114,6 +114,36 @@ static void sendJsonInt(Webserver* webserver, long value) {
     sendJsonContent(webserver, buffer);
 }
 
+static auto hourSerialFromTm(const tm& timeInfo) -> long {
+    return ((static_cast<long>(timeInfo.tm_year) * 366L) + static_cast<long>(timeInfo.tm_yday)) * 24L +
+           static_cast<long>(timeInfo.tm_hour);
+}
+
+static auto currentLocalHourSerial() -> long {
+    const time_t now = time(nullptr);
+    tm* timeInfo = localtime(&now);
+    if (timeInfo == nullptr) {
+        return -1;
+    }
+    return hourSerialFromTm(*timeInfo);
+}
+
+static auto forecastDisplayHourSerial(time_t timestamp) -> long {
+    tm* timeInfo = gmtime(&timestamp);
+    if (timeInfo == nullptr) {
+        return -1;
+    }
+    return hourSerialFromTm(*timeInfo);
+}
+
+static auto shouldSendForecastEntry(const WeatherClient::ForecastEntry& entry, long currentHourSerial) -> bool {
+    if (entry.timestamp <= 0) {
+        return false;
+    }
+    const long entryHourSerial = forecastDisplayHourSerial(entry.timestamp);
+    return currentHourSerial < 0 || entryHourSerial < 0 || entryHourSerial >= currentHourSerial;
+}
+
 static auto timezoneOffsetForRegion(const String& region) -> int {
     if (region == "Asia/Seoul" || region == "Asia/Tokyo") {
         return 540;
@@ -1451,8 +1481,12 @@ void handleWeatherStatusGet(Webserver* webserver) {
     sendJsonFloat(webserver, weather.currentOzoneAqi);
     sendJsonContent(webserver, ",\"forecast\":[");
 
+    const long forecastCurrentHour = currentLocalHourSerial();
     bool first = true;
     for (const auto& entry : weather.forecast) {
+        if (!shouldSendForecastEntry(entry, forecastCurrentHour)) {
+            continue;
+        }
         if (!first) {
             sendJsonContent(webserver, ",");
         }

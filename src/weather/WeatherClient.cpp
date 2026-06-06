@@ -850,7 +850,7 @@ void WeatherClient::finishKmaRefresh(bool ok) {
     const unsigned long retryDelayMs = _snapshot.hasData ? WEATHER_STALE_RETRY_MS : WEATHER_INITIAL_RETRY_MS;
     _nextRefreshMs = millis() + (ok ? nextKmaStableRefreshDelayMs() : retryDelayMs);
     if (ok && (configManager.isClockEnabled() || configManager.isWeatherEnabled())) {
-        DisplayManager::pauseClock(0);
+        DisplayManager::invalidateWeather();
         DisplayManager::drawClock();
     }
 }
