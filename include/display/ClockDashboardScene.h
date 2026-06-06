@@ -35,7 +35,7 @@ struct WeatherInput {
     std::string timezone;
     std::string locationName;
     std::string status;
-    std::array<ForecastEntry, 4> forecast{};
+    std::array<ForecastEntry, 5> forecast{};
 };
 
 struct Input {

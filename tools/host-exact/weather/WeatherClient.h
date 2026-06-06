@@ -40,7 +40,7 @@ class WeatherClient {
         String timezone;
         String status;
         String source;
-        std::array<ForecastEntry, 4> forecast{};
+        std::array<ForecastEntry, 5> forecast{};
     };
 
     auto begin() -> void {}

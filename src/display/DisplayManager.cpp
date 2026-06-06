@@ -751,7 +751,8 @@ static auto lcdBuildClockDashboardScene(time_t now, bool validTime, bool showClo
         input.weather.locationName = configManager.getWeatherLocationName();
         input.weather.status = weather.status.c_str();
 
-        for (size_t i = 0; i < weather.forecast.size(); ++i) {
+        const size_t forecastCopyCount = std::min(input.weather.forecast.size(), weather.forecast.size());
+        for (size_t i = 0; i < forecastCopyCount; ++i) {
             input.weather.forecast[i].hasData = weather.forecast[i].timestamp > 0;
             input.weather.forecast[i].timestamp = weather.forecast[i].timestamp;
             input.weather.forecast[i].temperature = weather.forecast[i].temperature;

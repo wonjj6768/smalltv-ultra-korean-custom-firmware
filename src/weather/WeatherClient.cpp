@@ -30,7 +30,9 @@ static constexpr unsigned long WEATHER_INITIAL_RETRY_MS = 30UL * 1000UL;
 static constexpr unsigned long WEATHER_STALE_RETRY_MS = 5UL * 60UL * 1000UL;
 static constexpr unsigned long WEATHER_TIME_SYNC_RETRY_MS = 5UL * 1000UL;
 static constexpr unsigned long KMA_STABLE_REFRESH_MINUTE = 50UL;
-static constexpr size_t WEATHER_FORECAST_COUNT = 4;
+static constexpr size_t WEATHER_DISPLAY_FORECAST_COUNT = 4;
+static constexpr size_t WEATHER_SNAPSHOT_FORECAST_COUNT = WEATHER_DISPLAY_FORECAST_COUNT + 1;
+static constexpr size_t KMA_FORECAST_BUFFER_COUNT = 8;
 static constexpr const char* KMA_API_HOST = "apihub.kma.go.kr";
 static constexpr uint16_t KMA_API_PORT = 80;
 static constexpr unsigned long DISPLAY_PUMP_INTERVAL_MS = 100UL;
@@ -284,7 +286,7 @@ static auto mapKmaWeatherCode(int sky, int pty) -> int {
 }
 
 static bool applyKmaForecastObject(const char* objectJson,
-                                   std::array<WeatherClient::ForecastEntry, WEATHER_FORECAST_COUNT>& forecast,
+                                   std::array<WeatherClient::ForecastEntry, KMA_FORECAST_BUFFER_COUNT>& forecast,
                                    size_t& forecastCount) {
     char category[8] = {};
     char fcstDate[12] = {};
@@ -307,7 +309,7 @@ static bool applyKmaForecastObject(const char* objectJson,
     while (index < forecastCount && forecast[index].timestamp != timestamp) {
         ++index;
     }
-    if (index >= WEATHER_FORECAST_COUNT) {
+    if (index >= forecast.size()) {
         return false;
     }
     if (index == forecastCount) {
@@ -337,7 +339,7 @@ static bool applyKmaForecastObject(const char* objectJson,
 
 static bool parseKmaForecastStream(Client& client,
                                    int expectedBytes,
-                                   std::array<WeatherClient::ForecastEntry, WEATHER_FORECAST_COUNT>& forecast) {
+                                   std::array<WeatherClient::ForecastEntry, KMA_FORECAST_BUFFER_COUNT>& forecast) {
     for (auto& entry : forecast) {
         entry = WeatherClient::ForecastEntry{};
     }
@@ -770,7 +772,7 @@ WeatherClient::StepResult WeatherClient::fetchKmaForecastStep() {
 
     fcstContentLength = readHttpHeadersContentLength(forecastClient);
     serviceWatchdog();
-    std::array<WeatherClient::ForecastEntry, WEATHER_FORECAST_COUNT> forecast{};
+    std::array<WeatherClient::ForecastEntry, KMA_FORECAST_BUFFER_COUNT> forecast{};
     const bool forecastParsed = parseKmaForecastStream(forecastClient, fcstContentLength, forecast);
     forecastClient.stop();
     serviceWatchdog();
@@ -830,7 +832,7 @@ WeatherClient::StepResult WeatherClient::fetchKmaForecastStep() {
         }
         _snapshot.forecast[outputIndex] = entry;
         ++outputIndex;
-        if (outputIndex >= WEATHER_FORECAST_COUNT) {
+        if (outputIndex >= WEATHER_SNAPSHOT_FORECAST_COUNT) {
             break;
         }
     }

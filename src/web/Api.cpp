@@ -1482,8 +1482,12 @@ void handleWeatherStatusGet(Webserver* webserver) {
     sendJsonContent(webserver, ",\"forecast\":[");
 
     const long forecastCurrentHour = currentLocalHourSerial();
+    size_t sentForecastCount = 0;
     bool first = true;
     for (const auto& entry : weather.forecast) {
+        if (sentForecastCount >= 4) {
+            break;
+        }
         if (!shouldSendForecastEntry(entry, forecastCurrentHour)) {
             continue;
         }
@@ -1506,6 +1510,7 @@ void handleWeatherStatusGet(Webserver* webserver) {
         sendJsonContent(webserver, ",\"weatherCode\":");
         sendJsonInt(webserver, entry.weatherCode);
         sendJsonContent(webserver, "}");
+        ++sentForecastCount;
     }
 
     sendJsonContent(webserver, "]}");

@@ -127,39 +127,44 @@ static auto applyWeatherPreset(WeatherClient::Snapshot& snapshot, const std::str
         snapshot.currentVisibility = 12000.0F;
     }
 
-    const int weatherCodes[4] = {
+    const int weatherCodes[5] = {
         snapshot.currentWeatherCode,
         scenario == "clear" ? 1 : (scenario == "fog" ? 48 : (scenario == "air" ? 2 : 63)),
         scenario == "rain" ? 80 : 2,
         scenario == "clear" ? 3 : (scenario == "fog" ? 45 : (scenario == "air" ? 3 : 81)),
+        scenario == "rain" ? 63 : (scenario == "fog" ? 45 : 2),
     };
 
-    const float temperatures[4] = {
+    const float temperatures[5] = {
         snapshot.currentTemperature,
         static_cast<float>(snapshot.currentTemperature - 1.0F),
         static_cast<float>(snapshot.currentTemperature - 2.0F),
         static_cast<float>(snapshot.currentTemperature - 3.0F),
+        static_cast<float>(snapshot.currentTemperature - 4.0F),
     };
 
-    const float precipitation[4] = {
+    const float precipitation[5] = {
         snapshot.currentPrecipitation,
         scenario == "rain" ? 1.6F : 0.0F,
         0.0F,
         scenario == "rain" ? 0.4F : 0.0F,
+        0.0F,
     };
 
-    const float probability[4] = {
+    const float probability[5] = {
         snapshot.currentPrecipitationProbability,
         scenario == "clear" ? 0.0F : 45.0F,
         scenario == "clear" ? 0.0F : 35.0F,
         scenario == "clear" ? 0.0F : 25.0F,
+        scenario == "clear" ? 0.0F : 15.0F,
     };
 
-    const float humidity[4] = {
+    const float humidity[5] = {
         scenario == "rain" ? 88.0F : 55.0F,
         scenario == "rain" ? 91.0F : 52.0F,
         scenario == "rain" ? 86.0F : 48.0F,
         scenario == "rain" ? 82.0F : 45.0F,
+        scenario == "rain" ? 78.0F : 42.0F,
     };
 
     for (size_t index = 0; index < snapshot.forecast.size(); ++index) {
