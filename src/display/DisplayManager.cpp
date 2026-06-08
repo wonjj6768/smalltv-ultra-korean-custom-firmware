@@ -452,6 +452,10 @@ static constexpr auto lcdClockTemperatureTextColor() -> uint16_t {
     return lcdColor565(255, 179, 138);
 }
 
+static constexpr auto lcdClockTodayHighTextColor() -> uint16_t {
+    return lcdColor565(255, 202, 143);
+}
+
 static constexpr auto lcdClockDividerColor() -> uint16_t {
     return lcdColor565(82, 96, 103);
 }
@@ -882,7 +886,7 @@ static void lcdDrawClockInner() {
         if (!todayHighLabel.isEmpty() && todayHighWidth > 0) {
             const String trimmedHigh = lcdTrimTextToWidth(clockTarget, todayHighLabel, TODAY_HIGH_SIZE, todayHighWidth);
             lcdDrawTextAt(clockTarget, TODAY_HIGH_X, TODAY_HIGH_Y, trimmedHigh, TODAY_HIGH_SIZE,
-                          lcdClockDateTextColor(), LCD_BLACK);
+                          lcdClockTodayHighTextColor(), LCD_BLACK);
         }
         g_todayHighCache = todayHighLabel;
     }
