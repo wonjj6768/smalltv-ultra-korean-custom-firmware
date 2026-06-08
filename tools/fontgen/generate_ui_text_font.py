@@ -18,7 +18,7 @@ FONT_CANDIDATES = [
     Path("C:/Windows/Fonts/NotoSansKR-VF.ttf"),
 ]
 
-ASCII_CHARS = " 0123456789/:.%+-℃"
+ASCII_CHARS = " 0123456789/:.%+-℃↑"
 UI_STRINGS = [
     "와이파이 연결 중...",
     "연결되었습니다!",
@@ -55,7 +55,6 @@ UI_STRINGS = [
     "와이파이 연결 후 NTP 동기화",
     "SmallTV-Ultra Korean Custom Firmware",
     "오존",
-    "HI",
     "PM",
     "IP",
     "km",

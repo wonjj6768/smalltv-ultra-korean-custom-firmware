@@ -154,7 +154,7 @@ static auto formatTodayHighLabel(const WeatherInput& weather, std::time_t now, b
         }
     }
 
-    return std::string("HI") + std::to_string(static_cast<int>(std::lround(highest)));
+    return std::string("↑") + std::to_string(static_cast<int>(std::lround(highest)));
 }
 
 static auto formatForecastMetric(const ForecastEntry& entry) -> std::string {
