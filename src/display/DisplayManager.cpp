@@ -852,7 +852,7 @@ static void lcdDrawClockInner() {
     const String currentIpValue = (currentIp == "0.0.0.0") ? String("") : currentIp;
     constexpr int16_t CURRENT_IP_X = 8;
     constexpr int16_t CURRENT_IP_Y = 4;
-    constexpr int16_t CURRENT_IP_WIDTH = 122;
+    constexpr int16_t CURRENT_IP_WIDTH = 78;
     constexpr int16_t CURRENT_IP_HEIGHT = 10;
     constexpr int16_t UPDATE_NOTICE_Y = 19;
     constexpr int16_t UPDATE_NOTICE_HEIGHT = 15;
@@ -872,15 +872,17 @@ static void lcdDrawClockInner() {
     }
 
     const String todayHighLabel = lcdString(scene.todayHighLabel);
-    constexpr int16_t TODAY_HIGH_X = 118;
+    constexpr int16_t TODAY_HIGH_X = 86;
     constexpr int16_t TODAY_HIGH_Y = CURRENT_IP_Y;
-    constexpr int16_t TODAY_HIGH_HEIGHT = CURRENT_IP_HEIGHT;
+    constexpr uint8_t TODAY_HIGH_SIZE = 2;
+    constexpr int16_t TODAY_HIGH_HEIGHT = 20;
     const int16_t todayHighWidth = static_cast<int16_t>(currentIconX - TODAY_HIGH_X - 4);
     if (g_todayHighCache != todayHighLabel) {
         clockTarget->fillRect(TODAY_HIGH_X, TODAY_HIGH_Y, todayHighWidth, TODAY_HIGH_HEIGHT, LCD_BLACK);
         if (!todayHighLabel.isEmpty() && todayHighWidth > 0) {
-            const String trimmedHigh = lcdTrimTextToWidth(clockTarget, todayHighLabel, 1, todayHighWidth);
-            lcdDrawTextAt(clockTarget, TODAY_HIGH_X, TODAY_HIGH_Y, trimmedHigh, 1, lcdClockDateTextColor(), LCD_BLACK);
+            const String trimmedHigh = lcdTrimTextToWidth(clockTarget, todayHighLabel, TODAY_HIGH_SIZE, todayHighWidth);
+            lcdDrawTextAt(clockTarget, TODAY_HIGH_X, TODAY_HIGH_Y, trimmedHigh, TODAY_HIGH_SIZE,
+                          lcdClockDateTextColor(), LCD_BLACK);
         }
         g_todayHighCache = todayHighLabel;
     }
