@@ -55,7 +55,7 @@ UI_STRINGS = [
     "와이파이 연결 후 NTP 동기화",
     "SmallTV-Ultra Korean Custom Firmware",
     "오존",
-    "최고기온",
+    "HI",
     "PM",
     "IP",
     "km",

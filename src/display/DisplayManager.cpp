@@ -872,9 +872,9 @@ static void lcdDrawClockInner() {
     }
 
     const String todayHighLabel = lcdString(scene.todayHighLabel);
-    constexpr int16_t TODAY_HIGH_X = 86;
-    constexpr int16_t TODAY_HIGH_Y = 34;
-    constexpr int16_t TODAY_HIGH_HEIGHT = 12;
+    constexpr int16_t TODAY_HIGH_X = 118;
+    constexpr int16_t TODAY_HIGH_Y = CURRENT_IP_Y;
+    constexpr int16_t TODAY_HIGH_HEIGHT = CURRENT_IP_HEIGHT;
     const int16_t todayHighWidth = static_cast<int16_t>(currentIconX - TODAY_HIGH_X - 4);
     if (g_todayHighCache != todayHighLabel) {
         clockTarget->fillRect(TODAY_HIGH_X, TODAY_HIGH_Y, todayHighWidth, TODAY_HIGH_HEIGHT, LCD_BLACK);
