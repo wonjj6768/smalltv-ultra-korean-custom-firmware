@@ -117,6 +117,46 @@ static auto forecastDisplayHourSerial(std::time_t timestamp) -> long {
     return hourSerialFromTm(*timeInfo);
 }
 
+static auto daySerialFromTm(const std::tm& timeInfo) -> long {
+    return (static_cast<long>(timeInfo.tm_year) * 366L) + static_cast<long>(timeInfo.tm_yday);
+}
+
+static auto localDaySerial(std::time_t timestamp) -> long {
+    std::tm* timeInfo = std::localtime(&timestamp);
+    if (timeInfo == nullptr) {
+        return -1;
+    }
+    return daySerialFromTm(*timeInfo);
+}
+
+static auto forecastDisplayDaySerial(std::time_t timestamp) -> long {
+    std::tm* timeInfo = std::gmtime(&timestamp);
+    if (timeInfo == nullptr) {
+        return -1;
+    }
+    return daySerialFromTm(*timeInfo);
+}
+
+static auto formatTodayHighLabel(const WeatherInput& weather, std::time_t now, bool validTime) -> std::string {
+    float highest = weather.currentTemperature;
+    const long todaySerial = validTime ? localDaySerial(now) : -1;
+
+    for (const ForecastEntry& entry : weather.forecast) {
+        if (!entry.hasData) {
+            continue;
+        }
+        const long entryDaySerial = forecastDisplayDaySerial(entry.timestamp);
+        if (todaySerial >= 0 && entryDaySerial >= 0 && entryDaySerial != todaySerial) {
+            continue;
+        }
+        if (entry.temperature > highest) {
+            highest = entry.temperature;
+        }
+    }
+
+    return textFor("최고기온 ") + std::to_string(static_cast<int>(std::lround(highest))) + "℃";
+}
+
 static auto formatForecastMetric(const ForecastEntry& entry) -> std::string {
     if (entry.precipitation > 0.0F) {
         std::string label = formatDecimal(entry.precipitation);
@@ -355,6 +395,7 @@ auto buildScene(const Input& input) -> Scene {
         }
     }
     scene.weatherIconCode = input.weather.currentWeatherCode;
+    scene.todayHighLabel = formatTodayHighLabel(input.weather, input.now, input.validTime);
 
     const long currentHourSerial = input.validTime ? currentLocalHourSerial(input.now) : -1;
     size_t visualIndex = 0;

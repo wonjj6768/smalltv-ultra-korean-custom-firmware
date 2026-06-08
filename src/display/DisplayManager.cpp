@@ -79,6 +79,7 @@ static String g_clockSecondaryBlockCache;
 static String g_clockDateCache;
 static String g_weatherTitleCache;
 static String g_weatherCurrentCache;
+static String g_todayHighCache;
 static uint8_t g_lastAppliedBrightness = 0xFF;
 static unsigned long g_nextBrightnessScheduleCheckMs = 0;
 static std::array<String, 4> g_weatherForecastCache{};
@@ -260,6 +261,7 @@ static void lcdResetClockLayoutCache() {
     g_clockDateCache = "";
     g_weatherTitleCache = "";
     g_weatherCurrentCache = "";
+    g_todayHighCache = "";
     g_waitLine1Cache = "";
     g_waitLine2Cache = "";
     g_clockPrimaryRegionWidth = 0;
@@ -392,6 +394,7 @@ static void lcdFlushClockCanvases() {
 static void lcdResetWeatherCache() {
     g_weatherTitleCache = "";
     g_weatherCurrentCache = "";
+    g_todayHighCache = "";
     g_currentWeatherIconCache = -999;
     g_currentUmbrellaBadgeCache = false;
     g_forecastWeatherIconCache.fill(-999);
@@ -866,6 +869,20 @@ static void lcdDrawClockInner() {
         }
         g_currentIpCache = currentIpValue;
         g_updateAvailableCache = g_updateAvailable;
+    }
+
+    const String todayHighLabel = lcdString(scene.todayHighLabel);
+    constexpr int16_t TODAY_HIGH_X = 86;
+    constexpr int16_t TODAY_HIGH_Y = 34;
+    constexpr int16_t TODAY_HIGH_HEIGHT = 12;
+    const int16_t todayHighWidth = static_cast<int16_t>(currentIconX - TODAY_HIGH_X - 4);
+    if (g_todayHighCache != todayHighLabel) {
+        clockTarget->fillRect(TODAY_HIGH_X, TODAY_HIGH_Y, todayHighWidth, TODAY_HIGH_HEIGHT, LCD_BLACK);
+        if (!todayHighLabel.isEmpty() && todayHighWidth > 0) {
+            const String trimmedHigh = lcdTrimTextToWidth(clockTarget, todayHighLabel, 1, todayHighWidth);
+            lcdDrawTextAt(clockTarget, TODAY_HIGH_X, TODAY_HIGH_Y, trimmedHigh, 1, lcdClockDateTextColor(), LCD_BLACK);
+        }
+        g_todayHighCache = todayHighLabel;
     }
 
     String primaryTime = scene.clockPrimary.empty() ? lcdString(scene.clockTime) : lcdString(scene.clockPrimary);

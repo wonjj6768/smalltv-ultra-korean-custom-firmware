@@ -72,6 +72,7 @@ struct Scene {
     std::string clockDate;
     std::string weatherTitle;
     std::string weatherCurrent;
+    std::string todayHighLabel;
     std::array<std::string, 4> weatherForecast{};
     std::array<ForecastVisual, 4> weatherForecastVisuals{};
     int weatherIconCode = -1;
