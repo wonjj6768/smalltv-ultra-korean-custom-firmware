@@ -4,8 +4,6 @@
 
 원본 프로젝트 [Times-Z/GeekMagic-Open-Firmware](https://github.com/Times-Z/GeekMagic-Open-Firmware)를 기반으로, 한국어 시계/날씨 표시와 국내 사용 흐름에 맞춰 정리했습니다.
 
-저장소: [wonjj6768/smalltv-ultra-korean-custom-firmware](https://github.com/wonjj6768/smalltv-ultra-korean-custom-firmware)
-
 ## 미리보기
 
 ![맑음 화면](.github/assets/dashboard-preview-clear.png)
@@ -20,12 +18,9 @@
 - 로컬 웹 UI에서 Wi-Fi, 시간, 지역, 밝기, 업데이트 설정
 - 순정 펌웨어에서 넘어오기 위한 브릿지 펌웨어 제공
 
-GIF 관련 코드는 남겨두었지만, 일반 사용자 기능으로는 아직 개발 중입니다.
-
 ## 지원 기기
 
 - **SmallTV-Ultra만 지원합니다.**
-- 다른 GeekMagic/SmallTV 모델은 이 저장소의 지원 범위가 아닙니다.
 
 ## 릴리즈 파일
 
