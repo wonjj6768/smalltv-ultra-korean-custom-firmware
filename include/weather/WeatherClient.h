@@ -39,6 +39,9 @@ class WeatherClient {
         float currentOzone = 0.0F;
         float currentPm25Aqi = 0.0F;
         float currentOzoneAqi = 0.0F;
+        bool hasTodayHighTemperature = false;
+        float todayHighTemperature = 0.0F;
+        String todayHighDate;
         int currentWeatherCode = -1;
         time_t currentTime = 0;
         time_t lastUpdated = 0;

@@ -13,7 +13,7 @@
 ## 주요 기능
 
 - SmallTV-Ultra 화면에 맞춘 한국어 시계/날씨 대시보드
-- 기상청 APIHub 기반 현재 실황 + 초단기예보 표시
+- 기상청 APIHub 기반 현재 실황, 초단기예보, 오늘 최고기온 표시
 - 온도, 강수량, 습도, 미세먼지, 오존 표시
 - 로컬 웹 UI에서 Wi-Fi, 시간, 지역, 밝기, 업데이트 설정
 - 순정 펌웨어에서 넘어오기 위한 브릿지 펌웨어 제공
@@ -68,11 +68,13 @@ Wi-Fi가 설정되지 않았으면 기기가 AP 모드로 시작합니다.
 - `4. 동네예보(초단기실황·초단기예보·단기예보) 조회`
 - `4.1 초단기실황조회`
 - `4.2 초단기예보조회`
+- `4.3 단기예보조회`
 
 사용하는 서비스 경로:
 
 - `VilageFcstInfoService_2.0/getUltraSrtNcst`
 - `VilageFcstInfoService_2.0/getUltraSrtFcst`
+- `VilageFcstInfoService_2.0/getVilageFcst`
 
 `지상관측`, `종관기상관측(ASOS)`, `방재기상관측(AWS)`는 이 펌웨어에 필요하지 않습니다.
 

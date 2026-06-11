@@ -753,6 +753,8 @@ static auto lcdBuildClockDashboardScene(time_t now, bool validTime, bool showClo
         input.weather.currentPrecipitation = weather.currentPrecipitation;
         input.weather.currentPrecipitationProbability = weather.currentPrecipitationProbability;
         input.weather.currentHumidity = weather.currentHumidity;
+        input.weather.hasTodayHighTemperature = weather.hasTodayHighTemperature;
+        input.weather.todayHighTemperature = weather.todayHighTemperature;
         input.weather.currentWeatherCode = weather.currentWeatherCode;
         input.weather.timezone = weather.timezone.length() != 0 ? weather.timezone.c_str() : configManager.getWeatherTimezone();
         input.weather.locationName = configManager.getWeatherLocationName();

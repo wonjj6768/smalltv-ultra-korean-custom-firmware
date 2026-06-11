@@ -28,6 +28,7 @@ py -m platformio run -d tools/bridge-firmware
 
 - 현재 칸: 초단기실황 `getUltraSrtNcst`
 - 이후 예보 칸: 초단기예보 `getUltraSrtFcst`
+- 오늘 최고기온: 단기예보 `getVilageFcst`의 `TMX`
 - API 키는 웹 UI에서 사용자가 직접 입력합니다.
 - 개인 API 키를 커밋하지 않습니다.
 

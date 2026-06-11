@@ -138,6 +138,10 @@ static auto forecastDisplayDaySerial(std::time_t timestamp) -> long {
 }
 
 static auto formatTodayHighLabel(const WeatherInput& weather, std::time_t now, bool validTime) -> std::string {
+    if (weather.hasTodayHighTemperature) {
+        return std::string("↑") + std::to_string(static_cast<int>(std::lround(weather.todayHighTemperature)));
+    }
+
     float highest = weather.currentTemperature;
     const long todaySerial = validTime ? localDaySerial(now) : -1;
 

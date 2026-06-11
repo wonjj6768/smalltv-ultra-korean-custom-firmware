@@ -255,8 +255,36 @@ static auto formatKstDate(const tm& timeInfo) -> String {
 
 static auto formatHourMinute(const tm& timeInfo, int minute) -> String {
     char buffer[8] = {};
-    snprintf(buffer, sizeof(buffer), "%02d%02d", timeInfo.tm_hour, minute);
+    const int hour = std::max(0, std::min(23, timeInfo.tm_hour));
+    const int safeMinute = std::max(0, std::min(59, minute));
+    snprintf(buffer, sizeof(buffer), "%02d%02d", hour, safeMinute);
     return buffer;
+}
+
+static auto latestKmaVilageBaseTm(const tm& nowKst) -> tm {
+    static constexpr int BASE_HOURS[] = {2, 5, 8, 11, 14, 17, 20, 23};
+
+    int selectedHour = -1;
+    for (const int baseHour : BASE_HOURS) {
+        if (nowKst.tm_hour > baseHour || (nowKst.tm_hour == baseHour && nowKst.tm_min >= 10)) {
+            selectedHour = baseHour;
+        }
+    }
+
+    tm base = nowKst;
+    if (selectedHour < 0) {
+        const time_t previousDay = makeDisplayTimestamp(formatKstDate(nowKst), String("00")) - (60L * 60L);
+        tm* previousInfo = gmtime(&previousDay);
+        if (previousInfo != nullptr) {
+            base = *previousInfo;
+        }
+        selectedHour = 23;
+    }
+
+    base.tm_hour = selectedHour;
+    base.tm_min = 0;
+    base.tm_sec = 0;
+    return base;
 }
 
 static auto makeKstHourTimestamp(const tm& timeInfo) -> time_t {
@@ -450,6 +478,111 @@ static bool parseKmaCurrentStream(Client& client,
     }
 
     return sawValue;
+}
+
+static bool parseKmaDailyHighStream(Client& client, int expectedBytes, const String& todayDate, float& todayHighTemperature) {
+    todayHighTemperature = 0.0F;
+
+    int readCount = 0;
+    unsigned long lastDataMs = millis();
+    bool recording = false;
+    char objectJson[320] = {};
+    size_t objectLength = 0;
+    bool foundTmx = false;
+    bool foundTmp = false;
+    float tmpHigh = -100.0F;
+
+    while (expectedBytes <= 0 || readCount < expectedBytes) {
+        if (!client.available()) {
+            if (millis() - lastDataMs > 1500UL) {
+                break;
+            }
+            delay(1);
+            serviceWatchdog();
+            continue;
+        }
+
+        const char c = static_cast<char>(client.read());
+        ++readCount;
+        lastDataMs = millis();
+
+        if (c == '{') {
+            recording = true;
+            objectLength = 0;
+        }
+        if (recording && objectLength + 1 < sizeof(objectJson)) {
+            objectJson[objectLength++] = c;
+            objectJson[objectLength] = '\0';
+        }
+        if (recording && c == '}') {
+            char category[8] = {};
+            char fcstDate[12] = {};
+            char value[24] = {};
+            if (copyJsonField(objectJson, "category", category, sizeof(category)) &&
+                copyJsonField(objectJson, "fcstDate", fcstDate, sizeof(fcstDate)) &&
+                strcmp(fcstDate, todayDate.c_str()) == 0 &&
+                copyJsonField(objectJson, "fcstValue", value, sizeof(value))) {
+                if (strcmp(category, "TMX") == 0) {
+                    todayHighTemperature = parseOptionalFloat(value, todayHighTemperature);
+                    foundTmx = true;
+                } else if (strcmp(category, "TMP") == 0 && !foundTmx) {
+                    const float temperature = parseOptionalFloat(value, tmpHigh);
+                    tmpHigh = foundTmp ? std::max(tmpHigh, temperature) : temperature;
+                    foundTmp = true;
+                }
+            }
+            recording = false;
+        }
+
+        serviceWatchdog();
+    }
+
+    if (!foundTmx && foundTmp) {
+        todayHighTemperature = tmpHigh;
+    }
+    return foundTmx || foundTmp;
+}
+
+static bool fetchKmaDailyHighTemperature(const IPAddress& address,
+                                         const String& apiKey,
+                                         const String& todayDate,
+                                         const String& baseDate,
+                                         const String& baseTime,
+                                         int nx,
+                                         int ny,
+                                         float& todayHighTemperature) {
+    const String basePath = "/api/typ02/openApi/VilageFcstInfoService_2.0";
+    const String path = basePath + "/getVilageFcst?pageNo=1&numOfRows=300&dataType=JSON&base_date=" +
+                        baseDate + "&base_time=" + baseTime + "&nx=" + String(nx) + "&ny=" + String(ny) +
+                        "&authKey=" + apiKey;
+
+    WiFiClient client;
+    client.setTimeout(800);
+    if (!client.connect(address, KMA_API_PORT)) {
+        return false;
+    }
+
+    serviceWatchdog();
+    client.setTimeout(2500);
+    client.print(F("GET "));
+    client.print(path);
+    client.print(F(" HTTP/1.0\r\nHost: "));
+    client.print(KMA_API_HOST);
+    client.print(F("\r\nUser-Agent: SmallTVUltraKoreanCustomFirmware/1.0\r\nAccept-Encoding: identity\r\nConnection: close\r\n\r\n"));
+
+    const String statusLine = readHttpStatusLine(client);
+    serviceWatchdog();
+    if (!httpOk(statusLine)) {
+        client.stop();
+        return false;
+    }
+
+    const int contentLength = readHttpHeadersContentLength(client);
+    serviceWatchdog();
+    const bool parsed = parseKmaDailyHighStream(client, contentLength, todayDate, todayHighTemperature);
+    client.stop();
+    serviceWatchdog();
+    return parsed;
 }
 
 static void latLonToKmaGrid(float latitude, float longitude, int& nx, int& ny) {
@@ -790,7 +923,20 @@ WeatherClient::StepResult WeatherClient::fetchKmaForecastStep() {
         return StepResult::Failed;
     }
 
-    const time_t currentHour = makeKstHourTimestamp(kstNowTm());
+    const tm nowKst = kstNowTm();
+    const time_t currentHour = makeKstHourTimestamp(nowKst);
+    const String todayDate = formatKstDate(nowKst);
+    const tm vilageBase = latestKmaVilageBaseTm(nowKst);
+    float fetchedTodayHighTemperature = 0.0F;
+    bool hasTodayHighTemperature =
+        fetchKmaDailyHighTemperature(_kmaAddress, apiKey, todayDate, formatKstDate(vilageBase),
+                                     formatHourMinute(vilageBase, 0), _pendingNx, _pendingNy,
+                                     fetchedTodayHighTemperature);
+    float todayHighTemperature = fetchedTodayHighTemperature;
+    if (!hasTodayHighTemperature && _snapshot.hasTodayHighTemperature && _snapshot.todayHighDate == todayDate) {
+        todayHighTemperature = _snapshot.todayHighTemperature;
+        hasTodayHighTemperature = true;
+    }
     int currentSkyWeatherCode = -1;
     for (const auto& entry : forecast) {
         if (entry.timestamp == currentHour && entry.weatherCode >= 0) {
@@ -807,6 +953,9 @@ WeatherClient::StepResult WeatherClient::fetchKmaForecastStep() {
     _snapshot.currentHumidity = _pendingCurrentHumidity;
     _snapshot.currentCloudCover = 0.0F;
     _snapshot.currentVisibility = 0.0F;
+    _snapshot.hasTodayHighTemperature = hasTodayHighTemperature;
+    _snapshot.todayHighTemperature = todayHighTemperature;
+    _snapshot.todayHighDate = hasTodayHighTemperature ? todayDate : "";
     _snapshot.currentWeatherCode =
         _pendingCurrentPty != 0
             ? mapKmaWeatherCode(3, _pendingCurrentPty)

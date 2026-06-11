@@ -31,6 +31,8 @@ struct WeatherInput {
     float currentPrecipitation = 0.0F;
     float currentPrecipitationProbability = -1.0F;
     float currentHumidity = -1.0F;
+    bool hasTodayHighTemperature = false;
+    float todayHighTemperature = 0.0F;
     int currentWeatherCode = -1;
     std::string timezone;
     std::string locationName;

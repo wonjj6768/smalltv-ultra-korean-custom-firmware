@@ -1175,7 +1175,7 @@ void handleDisplayBrightnessSet(Webserver* webserver) {
     Logger::info(("Display brightness updated to " + String(configManager.getDisplayBrightness())).c_str(), "API");
 }
 
-static auto kmaValidateDateTime(String& baseDate, String& baseTime) -> bool {
+static auto kmaValidateHourlyDateTime(int availableMinute, int outputMinute, String& baseDate, String& baseTime) -> bool {
     time_t now = time(nullptr);
     if (now < 1700000000L) {
         return false;
@@ -1188,7 +1188,7 @@ static auto kmaValidateDateTime(String& baseDate, String& baseTime) -> bool {
     }
 
     tm base = *timeInfo;
-    if (base.tm_min < 40) {
+    if (base.tm_min < availableMinute) {
         now -= 60L * 60L;
         timeInfo = gmtime(&now);
         if (timeInfo == nullptr) {
@@ -1200,7 +1200,53 @@ static auto kmaValidateDateTime(String& baseDate, String& baseTime) -> bool {
     char dateBuffer[40] = {};
     char timeBuffer[16] = {};
     snprintf(dateBuffer, sizeof(dateBuffer), "%04d%02d%02d", base.tm_year + 1900, base.tm_mon + 1, base.tm_mday);
-    snprintf(timeBuffer, sizeof(timeBuffer), "%02d00", base.tm_hour);
+    snprintf(timeBuffer, sizeof(timeBuffer), "%02d%02d", base.tm_hour, outputMinute);
+    baseDate = dateBuffer;
+    baseTime = timeBuffer;
+    return true;
+}
+
+static auto kmaValidateDateTime(String& baseDate, String& baseTime) -> bool {
+    return kmaValidateHourlyDateTime(40, 0, baseDate, baseTime);
+}
+
+static auto kmaValidateUltraForecastDateTime(String& baseDate, String& baseTime) -> bool {
+    return kmaValidateHourlyDateTime(45, 30, baseDate, baseTime);
+}
+
+static auto kmaValidateVilageDateTime(String& baseDate, String& baseTime) -> bool {
+    time_t now = time(nullptr);
+    if (now < 1700000000L) {
+        return false;
+    }
+
+    now += 9L * 60L * 60L;
+    tm* timeInfo = gmtime(&now);
+    if (timeInfo == nullptr) {
+        return false;
+    }
+
+    static constexpr int BASE_HOURS[] = {2, 5, 8, 11, 14, 17, 20, 23};
+    int selectedHour = -1;
+    for (const int baseHour : BASE_HOURS) {
+        if (timeInfo->tm_hour > baseHour || (timeInfo->tm_hour == baseHour && timeInfo->tm_min >= 10)) {
+            selectedHour = baseHour;
+        }
+    }
+    if (selectedHour < 0) {
+        now -= 24L * 60L * 60L;
+        timeInfo = gmtime(&now);
+        if (timeInfo == nullptr) {
+            return false;
+        }
+        selectedHour = 23;
+    }
+
+    char dateBuffer[40] = {};
+    char timeBuffer[16] = {};
+    snprintf(dateBuffer, sizeof(dateBuffer), "%04d%02d%02d", timeInfo->tm_year + 1900, timeInfo->tm_mon + 1,
+             timeInfo->tm_mday);
+    snprintf(timeBuffer, sizeof(timeBuffer), "%02d00", selectedHour);
     baseDate = dateBuffer;
     baseTime = timeBuffer;
     return true;
@@ -1282,6 +1328,33 @@ static auto extractKmaJsonString(const String& body, const char* key) -> String 
         return "";
     }
     return body.substring(valueStart, end);
+}
+
+static auto validateKmaPath(const String& path, String& statusLine, String& resultCode, String& resultMsg) -> bool {
+    WiFiClient client;
+    client.setTimeout(3000);
+    if (!client.connect(KMA_VALIDATE_HOST, KMA_VALIDATE_PORT)) {
+        statusLine = "connect failed";
+        resultCode = "";
+        resultMsg = "KMA connect failed";
+        return false;
+    }
+
+    client.print(F("GET "));
+    client.print(path);
+    client.print(F(" HTTP/1.0\r\nHost: "));
+    client.print(KMA_VALIDATE_HOST);
+    client.print(F("\r\nUser-Agent: SmallTVUltraKoreanCustomFirmware/1.0\r\nAccept-Encoding: identity\r\nConnection: close\r\n\r\n"));
+
+    statusLine = readKmaValidateLine(client);
+    skipKmaValidateHeaders(client);
+    const String body = readKmaValidateBody(client);
+    client.stop();
+
+    resultCode = extractKmaJsonString(body, "resultCode");
+    resultMsg = extractKmaJsonString(body, "resultMsg");
+    const bool httpOk = statusLine.startsWith("HTTP/1.1 200") || statusLine.startsWith("HTTP/1.0 200");
+    return httpOk && resultCode == "00";
 }
 
 void handleWeatherConfigGet(Webserver* webserver) {
@@ -1479,6 +1552,12 @@ void handleWeatherStatusGet(Webserver* webserver) {
     sendJsonFloat(webserver, weather.currentPm25Aqi);
     sendJsonContent(webserver, ",\"currentOzoneAqi\":");
     sendJsonFloat(webserver, weather.currentOzoneAqi);
+    sendJsonContent(webserver, ",\"hasTodayHighTemperature\":");
+    sendJsonContent(webserver, weather.hasTodayHighTemperature ? "true" : "false");
+    sendJsonContent(webserver, ",\"todayHighTemperature\":");
+    sendJsonFloat(webserver, weather.todayHighTemperature);
+    sendJsonContent(webserver, ",\"todayHighDate\":");
+    sendJsonEscapedString(webserver, weather.todayHighDate);
     sendJsonContent(webserver, ",\"forecast\":[");
 
     const long forecastCurrentHour = currentLocalHourSerial();
@@ -1562,7 +1641,13 @@ void handleWeatherValidateKey(Webserver* webserver) {
 
     String baseDate;
     String baseTime;
-    if (!kmaValidateDateTime(baseDate, baseTime)) {
+    String ultraBaseDate;
+    String ultraBaseTime;
+    String vilageBaseDate;
+    String vilageBaseTime;
+    if (!kmaValidateDateTime(baseDate, baseTime) ||
+        !kmaValidateUltraForecastDateTime(ultraBaseDate, ultraBaseTime) ||
+        !kmaValidateVilageDateTime(vilageBaseDate, vilageBaseTime)) {
         doc["status"] = "error";
         doc["valid"] = false;
         doc["message"] = "time not synced";
@@ -1574,39 +1659,33 @@ void handleWeatherValidateKey(Webserver* webserver) {
         return;
     }
 
-    WiFiClient client;
-    client.setTimeout(3000);
-    if (!client.connect(KMA_VALIDATE_HOST, KMA_VALIDATE_PORT)) {
-        doc["status"] = "error";
-        doc["valid"] = false;
-        doc["message"] = "KMA connect failed";
+    const String currentPath = String("/api/typ02/openApi/VilageFcstInfoService_2.0/getUltraSrtNcst") +
+                               "?pageNo=1&numOfRows=10&dataType=JSON&base_date=" + baseDate +
+                               "&base_time=" + baseTime + "&nx=" + String(KMA_VALIDATE_SEOUL_X) +
+                               "&ny=" + String(KMA_VALIDATE_SEOUL_Y) + "&authKey=" + apiKey;
+    const String ultraPath = String("/api/typ02/openApi/VilageFcstInfoService_2.0/getUltraSrtFcst") +
+                             "?pageNo=1&numOfRows=10&dataType=JSON&base_date=" + ultraBaseDate +
+                             "&base_time=" + ultraBaseTime + "&nx=" + String(KMA_VALIDATE_SEOUL_X) +
+                             "&ny=" + String(KMA_VALIDATE_SEOUL_Y) + "&authKey=" + apiKey;
+    const String vilagePath = String("/api/typ02/openApi/VilageFcstInfoService_2.0/getVilageFcst") +
+                              "?pageNo=1&numOfRows=10&dataType=JSON&base_date=" + vilageBaseDate +
+                              "&base_time=" + vilageBaseTime + "&nx=" + String(KMA_VALIDATE_SEOUL_X) +
+                              "&ny=" + String(KMA_VALIDATE_SEOUL_Y) + "&authKey=" + apiKey;
 
-        String json;
-        serializeJson(doc, json);
-        setCorsHeaders(webserver);
-        webserver->raw().send(HTTP_CODE_OK, "application/json", json);
-        return;
-    }
+    String currentStatusLine;
+    String currentResultCode;
+    String currentResultMsg;
+    String ultraStatusLine;
+    String ultraResultCode;
+    String ultraResultMsg;
+    String vilageStatusLine;
+    String vilageResultCode;
+    String vilageResultMsg;
 
-    const String path = String("/api/typ02/openApi/VilageFcstInfoService_2.0/getUltraSrtNcst") +
-                        "?pageNo=1&numOfRows=10&dataType=JSON&base_date=" + baseDate + "&base_time=" + baseTime +
-                        "&nx=" + String(KMA_VALIDATE_SEOUL_X) + "&ny=" + String(KMA_VALIDATE_SEOUL_Y) +
-                        "&authKey=" + apiKey;
-    client.print(F("GET "));
-    client.print(path);
-    client.print(F(" HTTP/1.0\r\nHost: "));
-    client.print(KMA_VALIDATE_HOST);
-    client.print(F("\r\nUser-Agent: SmallTVUltraKoreanCustomFirmware/1.0\r\nAccept-Encoding: identity\r\nConnection: close\r\n\r\n"));
-
-    const String statusLine = readKmaValidateLine(client);
-    skipKmaValidateHeaders(client);
-    const String body = readKmaValidateBody(client);
-    client.stop();
-
-    const String resultCode = extractKmaJsonString(body, "resultCode");
-    const String resultMsg = extractKmaJsonString(body, "resultMsg");
-    const bool httpOk = statusLine.startsWith("HTTP/1.1 200") || statusLine.startsWith("HTTP/1.0 200");
-    const bool valid = httpOk && resultCode == "00";
+    const bool currentValid = validateKmaPath(currentPath, currentStatusLine, currentResultCode, currentResultMsg);
+    const bool ultraValid = validateKmaPath(ultraPath, ultraStatusLine, ultraResultCode, ultraResultMsg);
+    const bool vilageValid = validateKmaPath(vilagePath, vilageStatusLine, vilageResultCode, vilageResultMsg);
+    const bool valid = currentValid && ultraValid && vilageValid;
 
     doc["status"] = valid ? "ok" : "error";
     doc["valid"] = valid;
@@ -1616,9 +1695,22 @@ void handleWeatherValidateKey(Webserver* webserver) {
     doc["ny"] = KMA_VALIDATE_SEOUL_Y;
     doc["base_date"] = baseDate;
     doc["base_time"] = baseTime;
-    doc["http_status"] = statusLine;
-    doc["result_code"] = resultCode;
-    doc["result_msg"] = resultMsg;
+    doc["ultra_base_date"] = ultraBaseDate;
+    doc["ultra_base_time"] = ultraBaseTime;
+    doc["vilage_base_date"] = vilageBaseDate;
+    doc["vilage_base_time"] = vilageBaseTime;
+    doc["http_status"] = currentStatusLine;
+    doc["result_code"] = currentResultCode;
+    doc["result_msg"] = currentResultMsg;
+    doc["current_valid"] = currentValid;
+    doc["ultra_valid"] = ultraValid;
+    doc["vilage_valid"] = vilageValid;
+    doc["current_result_code"] = currentResultCode;
+    doc["current_result_msg"] = currentResultMsg;
+    doc["ultra_result_code"] = ultraResultCode;
+    doc["ultra_result_msg"] = ultraResultMsg;
+    doc["vilage_result_code"] = vilageResultCode;
+    doc["vilage_result_msg"] = vilageResultMsg;
 
     String json;
     serializeJson(doc, json);
