@@ -480,8 +480,13 @@ static bool parseKmaCurrentStream(Client& client,
     return sawValue;
 }
 
-static bool parseKmaDailyHighStream(Client& client, int expectedBytes, const String& todayDate, float& todayHighTemperature) {
+static bool parseKmaDailyHighStream(Client& client,
+                                    int expectedBytes,
+                                    const String& todayDate,
+                                    float& todayHighTemperature,
+                                    String& highDate) {
     todayHighTemperature = 0.0F;
+    highDate = "";
 
     int readCount = 0;
     unsigned long lastDataMs = millis();
@@ -491,6 +496,12 @@ static bool parseKmaDailyHighStream(Client& client, int expectedBytes, const Str
     bool foundTmx = false;
     bool foundTmp = false;
     float tmpHigh = -100.0F;
+    bool foundFallbackTmx = false;
+    float fallbackTmxHigh = 0.0F;
+    char fallbackTmxDate[12] = {};
+    bool foundFallbackTmp = false;
+    float fallbackTmpHigh = -100.0F;
+    char fallbackTmpDate[12] = {};
 
     while (expectedBytes <= 0 || readCount < expectedBytes) {
         if (!client.available()) {
@@ -520,15 +531,31 @@ static bool parseKmaDailyHighStream(Client& client, int expectedBytes, const Str
             char value[24] = {};
             if (copyJsonField(objectJson, "category", category, sizeof(category)) &&
                 copyJsonField(objectJson, "fcstDate", fcstDate, sizeof(fcstDate)) &&
-                strcmp(fcstDate, todayDate.c_str()) == 0 &&
                 copyJsonField(objectJson, "fcstValue", value, sizeof(value))) {
                 if (strcmp(category, "TMX") == 0) {
-                    todayHighTemperature = parseOptionalFloat(value, todayHighTemperature);
-                    foundTmx = true;
+                    const float temperature = parseOptionalFloat(value, todayHighTemperature);
+                    if (strcmp(fcstDate, todayDate.c_str()) == 0) {
+                        todayHighTemperature = temperature;
+                        foundTmx = true;
+                    } else if (!foundFallbackTmx) {
+                        fallbackTmxHigh = temperature;
+                        strncpy(fallbackTmxDate, fcstDate, sizeof(fallbackTmxDate) - 1);
+                        foundFallbackTmx = true;
+                    }
                 } else if (strcmp(category, "TMP") == 0 && !foundTmx) {
                     const float temperature = parseOptionalFloat(value, tmpHigh);
-                    tmpHigh = foundTmp ? std::max(tmpHigh, temperature) : temperature;
-                    foundTmp = true;
+                    if (strcmp(fcstDate, todayDate.c_str()) == 0) {
+                        tmpHigh = foundTmp ? std::max(tmpHigh, temperature) : temperature;
+                        foundTmp = true;
+                    } else if (!foundFallbackTmx) {
+                        if (!foundFallbackTmp) {
+                            strncpy(fallbackTmpDate, fcstDate, sizeof(fallbackTmpDate) - 1);
+                            fallbackTmpHigh = temperature;
+                            foundFallbackTmp = true;
+                        } else if (strcmp(fcstDate, fallbackTmpDate) == 0) {
+                            fallbackTmpHigh = std::max(fallbackTmpHigh, temperature);
+                        }
+                    }
                 }
             }
             recording = false;
@@ -539,8 +566,17 @@ static bool parseKmaDailyHighStream(Client& client, int expectedBytes, const Str
 
     if (!foundTmx && foundTmp) {
         todayHighTemperature = tmpHigh;
+        highDate = todayDate;
+    } else if (foundTmx) {
+        highDate = todayDate;
+    } else if (foundFallbackTmx) {
+        todayHighTemperature = fallbackTmxHigh;
+        highDate = fallbackTmxDate;
+    } else if (foundFallbackTmp) {
+        todayHighTemperature = fallbackTmpHigh;
+        highDate = fallbackTmpDate;
     }
-    return foundTmx || foundTmp;
+    return foundTmx || foundTmp || foundFallbackTmx || foundFallbackTmp;
 }
 
 static bool fetchKmaDailyHighTemperature(const IPAddress& address,
@@ -550,7 +586,8 @@ static bool fetchKmaDailyHighTemperature(const IPAddress& address,
                                          const String& baseTime,
                                          int nx,
                                          int ny,
-                                         float& todayHighTemperature) {
+                                         float& todayHighTemperature,
+                                         String& highDate) {
     const String basePath = "/api/typ02/openApi/VilageFcstInfoService_2.0";
     const String path = basePath + "/getVilageFcst?pageNo=1&numOfRows=300&dataType=JSON&base_date=" +
                         baseDate + "&base_time=" + baseTime + "&nx=" + String(nx) + "&ny=" + String(ny) +
@@ -579,7 +616,7 @@ static bool fetchKmaDailyHighTemperature(const IPAddress& address,
 
     const int contentLength = readHttpHeadersContentLength(client);
     serviceWatchdog();
-    const bool parsed = parseKmaDailyHighStream(client, contentLength, todayDate, todayHighTemperature);
+    const bool parsed = parseKmaDailyHighStream(client, contentLength, todayDate, todayHighTemperature, highDate);
     client.stop();
     serviceWatchdog();
     return parsed;
@@ -928,13 +965,16 @@ WeatherClient::StepResult WeatherClient::fetchKmaForecastStep() {
     const String todayDate = formatKstDate(nowKst);
     const tm vilageBase = latestKmaVilageBaseTm(nowKst);
     float fetchedTodayHighTemperature = 0.0F;
+    String fetchedTodayHighDate;
     bool hasTodayHighTemperature =
         fetchKmaDailyHighTemperature(_kmaAddress, apiKey, todayDate, formatKstDate(vilageBase),
                                      formatHourMinute(vilageBase, 0), _pendingNx, _pendingNy,
-                                     fetchedTodayHighTemperature);
+                                     fetchedTodayHighTemperature, fetchedTodayHighDate);
     float todayHighTemperature = fetchedTodayHighTemperature;
+    String effectiveTodayHighDate = fetchedTodayHighDate;
     if (!hasTodayHighTemperature && _snapshot.hasTodayHighTemperature && _snapshot.todayHighDate == todayDate) {
         todayHighTemperature = _snapshot.todayHighTemperature;
+        effectiveTodayHighDate = _snapshot.todayHighDate;
         hasTodayHighTemperature = true;
     }
     int currentSkyWeatherCode = -1;
@@ -955,7 +995,7 @@ WeatherClient::StepResult WeatherClient::fetchKmaForecastStep() {
     _snapshot.currentVisibility = 0.0F;
     _snapshot.hasTodayHighTemperature = hasTodayHighTemperature;
     _snapshot.todayHighTemperature = todayHighTemperature;
-    _snapshot.todayHighDate = hasTodayHighTemperature ? todayDate : "";
+    _snapshot.todayHighDate = hasTodayHighTemperature ? effectiveTodayHighDate : "";
     _snapshot.currentWeatherCode =
         _pendingCurrentPty != 0
             ? mapKmaWeatherCode(3, _pendingCurrentPty)
